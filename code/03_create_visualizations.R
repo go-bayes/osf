@@ -11,222 +11,253 @@ cat("==========================================================================\
 library(tidyverse)
 library(here)
 library(ggplot2)
+library(ggeffects)
 library(patchwork)
 library(glue)
 
 # source configuration
-source(("code/config/config.R"))
+source("code/config/config.R")
 
 # load predictions
 cat("Loading model predictions...\n")
-predictions_all <- readRDS(("results/model_outputs/predictions_all.rds"))
+predictions_all <- readRDS("results/model_outputs/predictions_all.rds")
 cat("  ✓ Predictions loaded\n\n")
 
 # set plot theme
 theme_set(theme_minimal(base_size = 12))
 
-# color palette
-colors_observed <- "#0072B2"  # blue
-colors_imputed <- "#D55E00"   # orange
-
 # ========================================================================
-# CONTINUOUS OUTCOME PLOTS
+# CONTINUOUS OUTCOMES - GEE MODELS
 # ========================================================================
-cat("Creating continuous outcome plots...\n")
+cat("=== CREATING CONTINUOUS OUTCOME PLOTS ===\n\n")
 
-# function to create continuous outcome plot
-create_continuous_plot <- function(pred_observed, pred_imputed, 
-                                 outcome_label, y_limits = c(4.5, 5.5)) {
-  
-  # prepare data
-  df_observed <- as.data.frame(pred_observed) %>%
-    mutate(
-      data_type = "Observed",
-      year_label = case_when(
-        years == 0 ~ "2019-2020",
-        years == 1 ~ "2020-2021", 
-        years == 2 ~ "2021-2022",
-        years == 3 ~ "2022-2024",
-        TRUE ~ as.character(years)
-      )
-    )
-  
-  df_imputed <- as.data.frame(pred_imputed) %>%
-    mutate(
-      data_type = "Imputed",
-      year_label = case_when(
-        years == 0 ~ "2019-2020",
-        years == 1 ~ "2020-2021",
-        years == 2 ~ "2021-2022", 
-        years == 3 ~ "2022-2024",
-        TRUE ~ as.character(years)
-      )
-    )
-  
-  df_combined <- bind_rows(df_observed, df_imputed)
-  
-  # create plot
-  p <- ggplot(df_combined, aes(x = years, y = predicted, 
-                               color = data_type, fill = data_type)) +
-    geom_ribbon(aes(ymin = conf.low, ymax = conf.high), 
-                alpha = 0.2, color = NA) +
-    geom_line(size = 1.2) +
-    geom_point(size = 3) +
-    scale_color_manual(values = c("Observed" = colors_observed, 
-                                 "Imputed" = colors_imputed)) +
-    scale_fill_manual(values = c("Observed" = colors_observed,
-                                "Imputed" = colors_imputed)) +
-    scale_x_continuous(
-      breaks = 0:3,
-      labels = c("2019-2020", "2020-2021", "2021-2022", "2022-2024")
-    ) +
-    coord_cartesian(ylim = y_limits) +
-    labs(
-      x = "Year",
-      y = outcome_label,
-      color = "Data Type",
-      fill = "Data Type"
-    ) +
-    theme(
-      legend.position = "bottom",
-      axis.text.x = element_text(angle = 45, hjust = 1),
-      panel.grid.minor = element_blank()
-    )
-  
-  return(p)
-}
-
-# create plots
-plot_science_continuous <- create_continuous_plot(
+# trust in science - observed
+cat("1. Trust in Science (continuous) - Observed\n")
+gee_plot_trust_science_observed <- plot(
   predictions_all$observed$gee_science,
+  show_ci = TRUE,
+  show_data = TRUE,
+  ci_style = "dash",
+  colors = "metro",
+  jitter = .5,
+  dot_alpha = .01,
+  dot_size = 2
+) +
+  geom_point(
+    aes(x = x, y = predicted),
+    color = "red",
+    size = 2,
+    alpha = 1
+  ) +
+  labs(
+    x = "Years: 2019-2023",
+    y = "Trust in Science (1-7)",
+    title = "Average Trust in Science (Observed)"
+  ) +
+  theme_bw()
+
+print(gee_plot_trust_science_observed)
+
+# trust in science - imputed
+cat("2. Trust in Science (continuous) - Imputed\n")
+gee_plot_trust_science_imputed <- plot(
   predictions_all$imputed$gee_science,
-  "Social Value of Science (1-7)",
-  y_limits = c(4.8, 5.8)
-)
+  show_ci = TRUE,
+  show_data = TRUE,
+  ci_style = "dash",
+  colors = "us",
+  jitter = .5,
+  dot_alpha = .01,
+  dot_size = 2
+) +
+  geom_point(
+    aes(x = x, y = predicted),
+    color = "dodgerblue",
+    size = 2,
+    alpha = 1
+  ) +
+  labs(
+    x = "Years: 2019-2023",
+    y = "Trust in Science (1-7)",
+    title = "Average Trust in Science (Imputed)"
+  ) +
+  theme_bw()
 
-plot_scientists_continuous <- create_continuous_plot(
+print(gee_plot_trust_science_imputed)
+
+# view both
+library(patchwork)
+gee_plot_trust_science_observed + gee_plot_trust_science_imputed
+
+# trust in scientists - observed
+cat("3. Trust in Scientists (continuous) - Observed\n")
+gee_plot_trust_scientists_observed <- plot(
   predictions_all$observed$gee_scientists,
+  show_ci = TRUE,
+  ci_style = "dash",
+  colors = "metro",
+  limits = c(4.5, 5.5),
+  dot_size = 2
+) +
+  geom_point(
+    aes(x = x, y = predicted),
+    color = "red",
+    size = 2,
+    alpha = 1
+  ) +
+  labs(
+    x = "Years: 2019-2023",
+    y = "Trust in Scientists (1-7)",
+    title = "Average Trust in Scientists (Observed)"
+  ) +
+  theme_bw()
+
+print(gee_plot_trust_scientists_observed)
+
+# trust in scientists - imputed
+cat("4. Trust in Scientists (continuous) - Imputed\n")
+gee_plot_trust_scientists_imputed <- plot(
   predictions_all$imputed$gee_scientists,
-  "Trust in Scientists (1-7)",
-  y_limits = c(4.4, 5.4)
-)
+  show_ci = TRUE,
+  ci_style = "dash",
+  colors = "us",
+  limits = c(4.5, 5.5),
+  dot_size = 2
+) +
+  geom_point(
+    aes(x = x, y = predicted),
+    color = "dodgerblue",
+    size = 2,
+    alpha = 1
+  ) +
+  labs(
+    x = "Years: 2019-2023",
+    y = "Trust in Scientists (1-7)",
+    title = "Average Trust in Scientists (Imputed)"
+  ) +
+  theme_bw()
 
-cat("  ✓ Continuous outcome plots created\n")
+print(gee_plot_trust_scientists_imputed)
 
-# ========================================================================
-# CATEGORICAL OUTCOME PLOTS
-# ========================================================================
-cat("\nCreating categorical outcome plots...\n")
-
-# function to create categorical outcome plot
-create_categorical_plot <- function(pred_observed, pred_imputed,
-                                  outcome_label) {
-  
-  # prepare observed data
-  df_observed <- as.data.frame(pred_observed) %>%
-    mutate(
-      data_type = "Observed",
-      response_label = case_when(
-        response.level == "low" ~ "Low (1-3)",
-        response.level == "med" ~ "Medium (4-5)",
-        response.level == "high" ~ "High (6-7)",
-        TRUE ~ as.character(response.level)
-      )
-    )
-  
-  # prepare imputed data
-  df_imputed <- as.data.frame(pred_imputed) %>%
-    mutate(
-      data_type = "Imputed",
-      response_label = case_when(
-        response.level == "low" ~ "Low (1-3)",
-        response.level == "med" ~ "Medium (4-5)", 
-        response.level == "high" ~ "High (6-7)",
-        TRUE ~ as.character(response.level)
-      )
-    )
-  
-  # combine data
-  df_combined <- bind_rows(df_observed, df_imputed)
-  
-  # set factor levels
-  df_combined$response_label <- factor(
-    df_combined$response_label,
-    levels = c("Low (1-3)", "Medium (4-5)", "High (6-7)")
+# combined plot for continuous outcomes
+cat("\nCreating combined continuous plot...\n")
+combined_continuous_plot <-
+  (gee_plot_trust_science_observed + gee_plot_trust_science_imputed) /
+  (gee_plot_trust_scientists_observed + gee_plot_trust_scientists_imputed) +
+  plot_annotation(
+    title = "Trust in Science and Scientists: Continuous Outcomes",
+    subtitle = glue("GEE models with natural splines (N = {N_PARTICIPANTS})")
   )
-  
-  # create plot
-  p <- ggplot(df_combined, aes(x = years, y = predicted,
-                               color = data_type, fill = data_type)) +
-    geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
-                alpha = 0.2, color = NA) +
-    geom_line(size = 1) +
-    geom_point(size = 2) +
-    facet_wrap(~ response_label, ncol = 3, scales = "free_y") +
-    scale_color_manual(values = c("Observed" = colors_observed,
-                                 "Imputed" = colors_imputed)) +
-    scale_fill_manual(values = c("Observed" = colors_observed,
-                                "Imputed" = colors_imputed)) +
-    scale_x_continuous(
-      breaks = 0:3,
-      labels = c("2019-20", "2020-21", "2021-22", "2022-24")
-    ) +
-    scale_y_continuous(labels = scales::percent_format()) +
-    labs(
-      x = "Year",
-      y = "Predicted Probability",
-      color = "Data Type",
-      fill = "Data Type",
-      title = outcome_label
-    ) +
-    theme(
-      legend.position = "bottom",
-      axis.text.x = element_text(angle = 45, hjust = 1),
-      panel.grid.minor = element_blank(),
-      strip.background = element_rect(fill = "grey90"),
-      plot.title = element_text(hjust = 0.5, face = "bold")
-    )
-  
-  return(p)
-}
 
-# create plots
-plot_science_categorical <- create_categorical_plot(
+print(combined_continuous_plot)
+cat("  ✓ Combined continuous plot created\n")
+
+# ========================================================================
+# CATEGORICAL OUTCOMES - POLR MODELS
+# ========================================================================
+cat("\n=== CREATING CATEGORICAL OUTCOME PLOTS ===\n\n")
+
+# trust in science categories - observed
+cat("1. Trust in Science (categorical) - Observed\n")
+cat_plot_trust_science_observed <- plot(
   predictions_all$observed$polr_science,
+  show_ci = TRUE,
+  ci_style = "dash",
+  colors = "metro",
+  limits = c(0, 1),
+  dot_size = 2
+) +
+  labs(
+    x = "Years: 2019-2023",
+    y = "Predicted Probability",
+    title = "Level of Trust in Science (Observed)"
+  ) +
+  theme_bw()
+
+print(cat_plot_trust_science_observed)
+
+# trust in science categories - imputed
+cat("2. Trust in Science (categorical) - Imputed\n")
+cat_plot_trust_science_imputed <- plot(
   predictions_all$imputed$polr_science,
-  "Social Value of Science Categories"
-)
+  show_ci = TRUE,
+  ci_style = "dash",
+  colors = "us",
+  limits = c(0, 1),
+  dot_size = 2
+) +
+  labs(
+    x = "Years: 2019-2023",
+    y = "Predicted Probability",
+    title = "Level of Trust in Science (Imputed)"
+  ) +
+  theme_bw()
 
-plot_scientists_categorical <- create_categorical_plot(
+print(cat_plot_trust_science_imputed)
+
+# trust in scientists categories - observed
+cat("3. Trust in Scientists (categorical) - Observed\n")
+cat_plot_trust_scientists_observed <- plot(
   predictions_all$observed$polr_scientists,
+  show_ci = TRUE,
+  ci_style = "dash",
+  colors = "metro",
+  limits = c(0, 1),
+  dot_size = 2
+) +
+  labs(
+    x = "Years: 2019-2023",
+    y = "Predicted Probability",
+    title = "Level of Trust in Scientists (Observed)"
+  ) +
+  theme_bw()
+
+print(cat_plot_trust_scientists_observed)
+
+# trust in scientists categories - imputed
+cat("4. Trust in Scientists (categorical) - Imputed\n")
+cat_plot_trust_scientists_imputed <- plot(
   predictions_all$imputed$polr_scientists,
-  "Trust in Scientists Categories"
-)
+  show_ci = TRUE,
+  ci_style = "dash",
+  colors = "us",
+  limits = c(0, 1),
+  dot_size = 2
+) +
+  labs(
+    x = "Years: 2019-2023",
+    y = "Predicted Probability",
+    title = "Level of Trust in Scientists (Imputed)"
+  ) +
+  theme_bw()
 
-cat("  ✓ Categorical outcome plots created\n")
+print(cat_plot_trust_scientists_imputed)
+
+# combined plot for categorical outcomes
+cat("\nCreating combined categorical plot...\n")
+combined_categorical_plot <-
+  (cat_plot_trust_science_observed + cat_plot_trust_science_imputed) /
+  (cat_plot_trust_scientists_observed + cat_plot_trust_scientists_imputed) +
+  plot_annotation(
+    title = "Trust in Science and Scientists: Categorical Outcomes",
+    subtitle = glue("Proportional odds models with {N_IMPUTATIONS} imputations")
+  )
+
+print(combined_categorical_plot)
+cat("  ✓ Combined categorical plot created\n")
 
 # ========================================================================
-# COMBINED PLOTS
+# MAIN FIGURE - COMBINED ALL PLOTS
 # ========================================================================
-cat("\nCreating combined plots...\n")
+cat("\n=== CREATING MAIN FIGURE ===\n")
 
-# combine continuous plots
-combined_continuous <- plot_science_continuous + plot_scientists_continuous +
-  plot_layout(ncol = 2, guides = "collect") &
-  theme(legend.position = "bottom")
-
-# combine categorical plots
-combined_categorical <- plot_science_categorical / plot_scientists_categorical +
-  plot_layout(guides = "collect") &
-  theme(legend.position = "bottom")
-
-# main figure combining all plots
-main_figure <- (combined_continuous / combined_categorical) +
-  plot_layout(heights = c(1, 2)) +
+# note: categorical plots are faceted, so combining them all is complex
+# create a simpler main figure with just the continuous outcomes
+main_figure_continuous <- combined_continuous_plot +
   plot_annotation(
     title = "Trust in Science Over Time: Observed vs Imputed Data",
     subtitle = glue("New Zealand Attitudes and Values Study (N = {N_PARTICIPANTS})"),
-    caption = "Note: Shaded areas represent 95% confidence intervals.",
+    caption = "Note: Shaded areas represent 95% confidence intervals. Red = observed data, Blue = imputed data.",
     theme = theme(
       plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
       plot.subtitle = element_text(size = 14, hjust = 0.5),
@@ -234,85 +265,120 @@ main_figure <- (combined_continuous / combined_categorical) +
     )
   )
 
-cat("  ✓ Combined plots created\n")
+print(main_figure_continuous)
+cat("  ✓ Main figure (continuous) created\n")
+
+# the categorical plots are best viewed separately due to faceting
+cat("  Note: Categorical plots saved separately due to faceted structure\n")
 
 # ========================================================================
 # SAVE FIGURES
 # ========================================================================
-cat("\nSaving figures...\n")
+cat("\n=== SAVING FIGURES ===\n")
 
 # create figure directory if needed
-fig_dir <- ("results/figures")
+fig_dir <- "results/figures"
 if (!dir.exists(fig_dir)) {
   dir.create(fig_dir, recursive = TRUE)
 }
 
-# save individual plots
+# save individual continuous plots
 ggsave(
-  filename = (fig_dir, "trust_science_continuous.png"),
-  plot = plot_science_continuous,
+  filename = file.path(fig_dir, "gee_trust_science_observed.png"),
+  plot = gee_plot_trust_science_observed,
   width = 8, height = 6, dpi = FIGURE_DPI
 )
 
 ggsave(
-  filename = (fig_dir, "trust_scientists_continuous.png"),
-  plot = plot_scientists_continuous,
+  filename = file.path(fig_dir, "gee_trust_science_imputed.png"),
+  plot = gee_plot_trust_science_imputed,
   width = 8, height = 6, dpi = FIGURE_DPI
 )
 
 ggsave(
-  filename = (fig_dir, "trust_science_categorical.png"),
-  plot = plot_science_categorical,
-  width = 12, height = 6, dpi = FIGURE_DPI
+  filename = file.path(fig_dir, "gee_trust_scientists_observed.png"),
+  plot = gee_plot_trust_scientists_observed,
+  width = 8, height = 6, dpi = FIGURE_DPI
 )
 
 ggsave(
-  filename = (fig_dir, "trust_scientists_categorical.png"),
-  plot = plot_scientists_categorical,
-  width = 12, height = 6, dpi = FIGURE_DPI
+  filename = file.path(fig_dir, "gee_trust_scientists_imputed.png"),
+  plot = gee_plot_trust_scientists_imputed,
+  width = 8, height = 6, dpi = FIGURE_DPI
 )
+
+cat("  ✓ Individual continuous plots saved\n")
+
+# save individual categorical plots
+ggsave(
+  filename = file.path(fig_dir, "cat_trust_science_observed.png"),
+  plot = cat_plot_trust_science_observed,
+  width = 8, height = 6, dpi = FIGURE_DPI
+)
+
+ggsave(
+  filename = file.path(fig_dir, "cat_trust_science_imputed.png"),
+  plot = cat_plot_trust_science_imputed,
+  width = 8, height = 6, dpi = FIGURE_DPI
+)
+
+ggsave(
+  filename = file.path(fig_dir, "cat_trust_scientists_observed.png"),
+  plot = cat_plot_trust_scientists_observed,
+  width = 8, height = 6, dpi = FIGURE_DPI
+)
+
+ggsave(
+  filename = file.path(fig_dir, "cat_trust_scientists_imputed.png"),
+  plot = cat_plot_trust_scientists_imputed,
+  width = 8, height = 6, dpi = FIGURE_DPI
+)
+
+cat("  ✓ Individual categorical plots saved\n")
 
 # save combined plots
 ggsave(
-  filename = (fig_dir, "combined_continuous.png"),
-  plot = combined_continuous,
-  width = 14, height = 6, dpi = FIGURE_DPI
-)
-
-ggsave(
-  filename = (fig_dir, "combined_categorical.png"),
-  plot = combined_categorical,
+  filename = file.path(fig_dir, "combined_continuous.png"),
+  plot = combined_continuous_plot,
   width = 14, height = 10, dpi = FIGURE_DPI
 )
 
-# save main figure
 ggsave(
-  filename = (fig_dir, "main_figure.png"),
-  plot = main_figure,
-  width = 14, height = 16, dpi = FIGURE_DPI
+  filename = file.path(fig_dir, "combined_categorical.png"),
+  plot = combined_categorical_plot,
+  width = 14, height = 10, dpi = FIGURE_DPI
 )
 
-# save pdf versions
+cat("  ✓ Combined plots saved\n")
+
+# save main figure
+ggsave(
+  filename = file.path(fig_dir, "main_figure_continuous.png"),
+  plot = main_figure_continuous,
+  width = 14, height = 10, dpi = FIGURE_DPI
+)
+
+# save pdf versions if requested
 if ("pdf" %in% FIGURE_FORMAT) {
   ggsave(
-    filename = (fig_dir, "main_figure.pdf"),
-    plot = main_figure,
-    width = 14, height = 16, device = "pdf"
+    filename = file.path(fig_dir, "main_figure_continuous.pdf"),
+    plot = main_figure_continuous,
+    width = 14, height = 10, device = "pdf"
   )
-  cat("  ✓ PDF version saved\n")
-}
 
-cat("  ✓ All figures saved\n")
+  ggsave(
+    filename = file.path(fig_dir, "combined_continuous.pdf"),
+    plot = combined_continuous_plot,
+    width = 14, height = 10, device = "pdf"
+  )
 
-# ========================================================================
-# CREATE SUPPLEMENTARY PLOTS
-# ========================================================================
-cat("\nCreating supplementary plots...\n")
+  ggsave(
+    filename = file.path(fig_dir, "combined_categorical.pdf"),
+    plot = combined_categorical_plot,
+    width = 14, height = 10, device = "pdf"
+  )
 
-# plot showing missingness patterns
-if (exists("mids_obj")) {
-  # would need to load mids_obj - skip for now
-  cat("  - Missingness pattern plot (skipped - requires mids object)\n")
+  cat("  ✓ PDF versions saved\n")
 }
 
 # ========================================================================
@@ -323,6 +389,9 @@ cat("VISUALIZATION COMPLETE\n")
 cat("==========================================================================\n")
 cat("Figures saved to:", fig_dir, "\n")
 cat("\nMain outputs:\n")
-cat("  - main_figure.png/pdf: Combined figure for manuscript\n")
-cat("  - Individual plots for each outcome and model type\n")
+cat("  - main_figure_continuous.png/pdf: Main figure with continuous outcomes\n")
+cat("  - combined_continuous.png/pdf: All continuous outcome plots\n")
+cat("  - combined_categorical.png/pdf: All categorical outcome plots\n")
+cat("  - Individual plots for each outcome and data type\n")
+cat("\nNote: Categorical plots contain facets for response levels (low/med/high)\n")
 cat("\nNext step: Run 04_generate_tables.R\n")

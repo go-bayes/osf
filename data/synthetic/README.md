@@ -15,44 +15,70 @@ This folder contains synthetic data generation scripts and outputs that demonstr
 | Variable | Description | Scale/Values |
 |----------|-------------|-------------|
 | id | Participant identifier | Integer |
-| wave | Survey wave (0-3) | 0 = 2019, 1 = 2020, 2 = 2021, 3 = 2022 |
-| years | Years since baseline | 0-3 |
+| wave | Survey wave (0-4) | 0 = 2019, 1 = 2020, 2 = 2021, 3 = 2022, 4 = 2023 |
+| years | Years since baseline | 0-4 |
 | trust_science | "I have a high degree of confidence in the scientific community" | 1 (Strongly Disagree) - 7 (Strongly Agree) |
 | trust_scientists | "Our society places too much emphasis on science" (reverse coded) | 1 (Strongly Disagree) - 7 (Strongly Agree) |
-| age_baseline | Age at first measurement | Years |
-| gender | Gender | Male/Female |
-| ethnicity | Ethnic group | NZ European/Maori/Pacific/Asian/Other |
+| age_baseline | Age at first measurement | Years (mean ~50) |
+| gender | Gender | Female (62%) / Male (38%) |
+| ethnicity | Ethnic group | NZ European (68%) / Maori (17%) / Asian (10%) / Pacific (6%) / Other (4%) |
 | education | Education level | 1 (No high school) - 7 (Postgraduate degree) |
-| weights | Post-stratification weights | Numeric |
+| weights | Post-stratification weights (fixed at baseline) | Numeric (mean = 1.0) |
 
 ### Statistical Properties
 
-The synthetic data preserves key statistical properties:
-- **Correlated trust measures** (r ≈ 0.7 between trust_science and trust_scientists)
-- **Education predicts baseline trust** (higher education → higher trust, β ≈ 0.3)
-- **Temporal patterns** matching observed data:
-  - COVID-19 bump in 2020 (wave 1)
-  - Sustained elevation in 2021 (wave 2)
-  - Decline below baseline in 2022 (wave 3)
-- **Education moderates trajectories** (lower education → steeper declines)
+The synthetic data uses a three-group simulation design with improved features:
+
+#### Baseline Distribution
+- **Trust in Science**: Generated from correlated bivariate normal distribution (r≈0.6)
+  - Low trust group (education 1-2): Mean ~2.9
+  - Medium trust group (education 3-5): Mean ~5.15
+  - High trust group (education 6-7): Mean ~6.1
+- **Trust in Scientists**: Correlated with trust in science
+  - Low: Mean ~2.7, Medium: Mean ~4.95, High: Mean ~5.9
+
+#### Group Trajectories (Linear Slopes)
+- **High trust group** (education 6-7): +0.2 per year
+- **Medium trust group** (education 3-5): 0.0 per year (stable)
+- **Low trust group** (education 1-2): -0.3 per year
+- **Measurement noise**: σ=0.10 (reduced for clearer education signal)
+
+#### Sampling Design
+- **Oversampled**: Women (62%), Māori (17%), older adults (mean age 50)
+- **Undersampled**: Men, Pacific/Asian populations, younger adults
+- **Post-stratification weights** correct for this design:
+  - Women: 0.90 (oversampled, need less weight)
+  - Men: 1.10 (undersampled, need more weight)
+  - Māori: 0.95 (slightly oversampled)
+  - Pacific: 1.20, Asian: 1.15 (undersampled)
+  - Age 55+: 0.85 (oversampled)
+  - Age <35: 1.15 (undersampled)
 
 ### Missing Data Patterns
 
-Selective attrition mechanisms:
-- **Trust effects**: Lower trust → higher dropout probability
-- **Education effects**: Lower education → higher dropout probability  
-- **Age effects**: Younger participants → higher dropout
-- **Time effects**: Increasing missingness over waves
+Realistic survey dropout patterns with improved mechanism:
 - **Monotone dropout**: Once missing, always missing
+- **Complete wave missingness**: When someone drops out, all their responses for that wave are missing
+- **Baseline characteristics remain known**: Age, gender, ethnicity, education stay in database
+- **Weights remain constant**: Fixed at baseline (not time-varying)
 
-#### COVID-Specific Attrition (Wave 1)
+#### Current-Value-Dependent Dropout
+Dropout probability now depends on **current trust values**, not just baseline group:
+```
+Logit(dropout) = -2.0 + 0.4*(4 - trust_science) + 0.15*years
+```
+This creates realistic patterns where:
+- People with lower current trust are more likely to drop out
+- Dropout increases over time for everyone
+- Creates selection bias that masks population decline
 
-During the COVID-19 pandemic (2020, wave 1), selective attrition was particularly strong:
-- **Low trust penalty**: Participants with trust < 3 had 70% higher dropout probability
-- **Moderate trust penalty**: Participants with trust 3-4 had 50% higher dropout probability
-- **High education bonus**: Participants with education ≥ 6 had 30% lower dropout probability
+#### Differential Attrition Outcomes
+With this mechanism, we observe:
+- **Low trust group**: ~43% dropout by Year 4
+- **Medium trust group**: ~42% dropout by Year 4
+- **High trust group**: ~42% dropout by Year 4
 
-This creates a strong selection effect where the COVID bump appears larger in observed data because low-trust individuals disproportionately left the study.
+While overall dropout rates are similar, the **composition** changes dramatically - low-trust individuals drop out preferentially, creating the illusion of stability/increase in observed data.
 
 ### Oracle Data
 
@@ -67,10 +93,10 @@ Generate new synthetic data:
 ```r
 source("generate_synthetic_data.R")
 synthetic_data <- generate_synthetic_trust_data(
-  n_participants = 42681,  # match NZAVS sample size
-  n_waves = 4,
+  n_participants = 40000,  # large sample for clear patterns
+  n_waves = 5,             # 2019-2023
   baseline_year = 2019,
-  seed = 123
+  seed = 2025
 )
 ```
 
@@ -85,4 +111,7 @@ The synthetic data demonstrates how:
 ## Technical Notes
 
 - All trust values bounded to 1-7 scale
-- Post-stratification weights approximate NZ Census targets
+- Post-stratification weights fixed at baseline (represent sampling probability)
+- Trust categories (low/med/high) created after data generation/imputation
+- Baseline sampling reflects actual NZAVS design (not population representative)
+- Weights correct for intentional oversampling in survey design

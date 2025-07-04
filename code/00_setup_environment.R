@@ -14,30 +14,30 @@ required_packages <- c(
   # data manipulation
   "tidyverse",
   "here",
-  
+
   # missing data
   "mice",
   "Amelia",
-  
+
   # statistical models
   "geepack",      # for gee
   "MASS",         # for polr
   "nnet",         # for reference (not used in final)
   "ordinal",      # for reference
-  
+
   # model tools
   "ggeffects",    # for predictions
   "parameters",   # for model summaries
   "sandwich",     # for robust ses
   "lmtest",       # for testing
-  
+
   # splines
   "splines",
-  
+
   # visualization
   "patchwork",    # for combining plots
   "ggplot2",
-  
+
   # utilities
   "glue"
 )
@@ -85,7 +85,7 @@ theme_set(theme_minimal(base_size = 12))
 cat("\nCreating output directories...\n")
 output_dirs <- c(
   "results/figures",
-  "results/tables", 
+  "results/tables",
   "results/model_outputs",
   "results/predictions"
 )
@@ -136,3 +136,4 @@ cat("\nNext steps:\n")
 cat("1. To run demo with synthetic data: source('code/demo/run_synthetic_demo.R')\n")
 cat("2. To run full analysis: run scripts 01-06 in order\n")
 cat("\nFor help, see documentation/README.md\n")
+

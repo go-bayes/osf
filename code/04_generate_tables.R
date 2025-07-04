@@ -104,20 +104,21 @@ extract_estimates <- function(predictions, model_type, outcome) {
   
   # get estimates at each time point
   estimates <- df %>%
-    filter(years %in% 0:3) %>%
+    filter(x %in% 0:4) %>%
     mutate(
       estimate_ci = glue("{round(predicted, 3)} [{round(conf.low, 3)}, {round(conf.high, 3)}]"),
       year_label = case_when(
-        years == 0 ~ "2019-2020",
-        years == 1 ~ "2020-2021",
-        years == 2 ~ "2021-2022",
-        years == 3 ~ "2022-2024"
+        x == 0 ~ "2019",
+        x == 1 ~ "2020",
+        x == 2 ~ "2021",
+        x == 3 ~ "2022",
+        x == 4 ~ "2023"
       )
     ) %>%
     select(year_label, estimate_ci)
   
-  # calculate change
-  change <- round(df$predicted[df$years == 3] - df$predicted[df$years == 0], 3)
+  # calculate change (from 2019 to 2023)
+  change <- round(df$predicted[df$x == 4] - df$predicted[df$x == 0], 3)
   
   return(list(estimates = estimates, change = change))
 }
@@ -130,9 +131,9 @@ scientists_imp_cont <- extract_estimates(predictions_all$imputed$gee_scientists,
 
 # create estimates table
 estimates_table <- data.frame(
-  Outcome = rep(c("Social Value of Science", "Trust in Scientists"), each = 8),
-  Data = rep(rep(c("Observed", "Imputed"), each = 4), 2),
-  Year = rep(c("2019-2020", "2020-2021", "2021-2022", "2022-2024"), 4)
+  Outcome = rep(c("Social Value of Science", "Trust in Scientists"), each = 10),
+  Data = rep(rep(c("Observed", "Imputed"), each = 5), 2),
+  Year = rep(c("2019", "2020", "2021", "2022", "2023"), 4)
 )
 
 # add estimates
@@ -160,11 +161,11 @@ table3 <- kable(
   estimates_wide,
   format = "html",
   caption = "Table 3. Marginal Mean Estimates (1-7 Scale) with 95% Confidence Intervals",
-  align = c("l", "l", "c", "c", "c", "c", "c")
+  align = c("l", "l", "c", "c", "c", "c", "c", "c")
 ) %>%
   kable_styling(full_width = TRUE, position = "left") %>%
   column_spec(2, bold = TRUE) %>%
-  add_header_above(c(" " = 2, "Year" = 4, " " = 1))
+  add_header_above(c(" " = 2, "Year" = 5, " " = 1))
 
 # save table 3
 cat(as.character(table3), file = ("results/tables/table3_estimates.html"))
@@ -178,20 +179,37 @@ cat("\nCreating Table 4: Model Coefficients...\n")
 
 # function to extract model parameters
 extract_model_params <- function(model, model_name) {
-  params <- parameters::model_parameters(model)
-  
-  # format output
-  df <- data.frame(
-    Model = model_name,
-    Term = params$Parameter,
-    Estimate = round(params$Coefficient, 4),
-    SE = round(params$SE, 4),
-    CI_Low = round(params$CI_low, 4),
-    CI_High = round(params$CI_high, 4),
-    p_value = round(params$p, 4)
-  )
-  
-  return(df)
+  tryCatch({
+    if (inherits(model, "polr")) {
+      # handle polr models manually
+      coefs <- coef(model)
+      se <- sqrt(diag(vcov(model)))
+      
+      df <- data.frame(
+        Model = model_name,
+        Term = names(coefs),
+        Estimate = round(coefs, 4),
+        SE = round(se[1:length(coefs)], 4),
+        stringsAsFactors = FALSE
+      )
+    } else {
+      # use parameters for other models
+      params <- parameters::model_parameters(model, ci_method = "wald")
+      
+      df <- data.frame(
+        Model = model_name,
+        Term = params$Parameter,
+        Estimate = round(params$Coefficient, 4),
+        SE = round(params$SE, 4),
+        stringsAsFactors = FALSE
+      )
+    }
+    
+    return(df)
+  }, error = function(e) {
+    cat("  Warning: Could not extract parameters for", model_name, "\n")
+    return(NULL)
+  })
 }
 
 # extract parameters for key models
@@ -202,23 +220,29 @@ params_list <- list(
   extract_model_params(models_observed$polr_scientists, "POLR: Scientists (Observed)")
 )
 
+# remove NULL entries
+params_list <- params_list[!sapply(params_list, is.null)]
+
 # combine
 all_params <- bind_rows(params_list)
 
-# create table 4
-table4 <- kable(
-  all_params,
-  format = "html",
-  caption = "Table 4. Model Coefficients",
-  digits = 4
-) %>%
-  kable_styling(full_width = TRUE, position = "left") %>%
-  collapse_rows(columns = 1, valign = "top")
-
-# save table 4
-cat(as.character(table4), file = ("results/tables/table4_coefficients.html"))
-
-cat("  ✓ Table 4 created\n")
+# create table 4 if we have parameters
+if (length(params_list) > 0) {
+  table4 <- kable(
+    all_params,
+    format = "html",
+    caption = "Table 4. Model Coefficients",
+    digits = 4
+  ) %>%
+    kable_styling(full_width = TRUE, position = "left") %>%
+    collapse_rows(columns = 1, valign = "top")
+  
+  # save table 4
+  cat(as.character(table4), file = ("results/tables/table4_coefficients.html"))
+  cat("  ✓ Table 4 created\n")
+} else {
+  cat("  ! No model parameters extracted\n")
+}
 
 # ========================================================================
 # SUPPLEMENTARY TABLES
@@ -233,10 +257,10 @@ extract_cat_probs <- function(predictions, outcome_name, data_type) {
   df <- as.data.frame(predictions)
   
   df %>%
-    filter(years %in% c(0, 3)) %>%
+    filter(x %in% c(0, 4)) %>%
     mutate(
       prob_ci = glue("{round(predicted * 100, 1)}% [{round(conf.low * 100, 1)}, {round(conf.high * 100, 1)}]"),
-      year_label = ifelse(years == 0, "2019-2020", "2022-2024"),
+      year_label = ifelse(x == 0, "2019", "2023"),
       outcome = outcome_name,
       data = data_type
     ) %>%
@@ -259,7 +283,7 @@ table_s1 <- kable(
   cat_probs_wide,
   format = "html",
   caption = "Table S1. Predicted Probabilities for Categorical Outcomes",
-  col.names = c("Outcome_Data_Level", "2019-2020", "2022-2024")
+  col.names = c("Outcome_Data_Level", "2019", "2023")
 ) %>%
   kable_styling(full_width = FALSE, position = "left")
 
