@@ -39,21 +39,35 @@ participants$trust_group <- case_when(
   participants$education >= 6 ~ "high"
 )
 
-# set baseline trust values based on group
-# but now we'll draw them from correlated bivariate normal
-baseline_means <- data.frame(
-  trust_group = c("low", "medium", "high"),
-  trust_science_mean = c(2.9, 5.15, 6.1),
-  trust_scientists_mean = c(2.7, 4.95, 5.9)
-)
+# generate baseline trust from demographic predictors
+cat("\nGenerating baseline trust from demographic predictors...\n")
 
-participants <- merge(participants, baseline_means, by = "trust_group", all.x = TRUE)
+# create demographic predictors for trust
+participants <- participants %>%
+  mutate(
+    # calculate mean trust from demographics
+    trust_science_mean = 4.0 + 
+      0.3 * education +
+      0.01 * (age_baseline - 50) +
+      0.2 * (gender == "Female") +
+      -0.3 * (ethnicity == "Maori") +
+      -0.2 * (ethnicity == "Pacific") +
+      0.1 * (ethnicity == "Asian"),
+    
+    # trust in scientists slightly lower overall but same predictors
+    trust_scientists_mean = 3.8 + 
+      0.3 * education +
+      0.01 * (age_baseline - 50) +
+      0.2 * (gender == "Female") +
+      -0.3 * (ethnicity == "Maori") +
+      -0.2 * (ethnicity == "Pacific") +
+      0.1 * (ethnicity == "Asian")
+  )
 
 # generate correlated baseline trust scores
-cat("\nGenerating correlated baseline trust scores...\n")
-# correlation matrix (r = 0.6)
-Sigma <- matrix(c(0.5^2, 0.5*0.5*0.6,
-                  0.5*0.5*0.6, 0.5^2), 2, 2)
+# correlation matrix (r = 0.7 - higher correlation)
+Sigma <- matrix(c(0.5^2, 0.5*0.5*0.7,
+                  0.5*0.5*0.7, 0.5^2), 2, 2)
 
 # generate for each participant
 trust_baselines <- matrix(NA, n_participants, 2)
@@ -77,6 +91,12 @@ cat("Baseline correlation between trust measures:",
 cat("\nBaseline trust by group:\n")
 aggregate(trust_science_baseline ~ trust_group, data = participants,
           function(x) round(c(mean = mean(x), n = length(x)), 2))
+
+# check demographic effects
+cat("\nDemographic effects on trust:\n")
+demo_model <- lm(trust_science_baseline ~ education + age_baseline + gender + ethnicity, 
+                 data = participants)
+print(round(coef(demo_model), 3))
 
 # create long format data
 cat("\nCreating longitudinal structure...\n")
@@ -368,7 +388,9 @@ cat("\n\n=== RUNNING AMELIA IMPUTATION ===\n")
 library(Amelia)
 library(mice)
 head(observed_data)
-# remove trust_group, drop_prob, dropped, and baseline variables (only used for simulation)
+cat("\nVariables in observed_data:", paste(names(observed_data), collapse=", "), "\n\n")
+
+# remove only simulation artifacts, keep demographic predictors
 amelia_data <- observed_data %>%
   dplyr::select(-trust_group, -drop_prob, -dropped,
                 -trust_science_baseline, -trust_scientists_baseline,
@@ -377,6 +399,8 @@ amelia_data <- observed_data %>%
 
 # convert wave to character for Amelia
 amelia_data$wave <- as.character(amelia_data$wave)
+
+cat("Variables in amelia_data:", paste(names(amelia_data), collapse=", "), "\n\n")
 
 # id variables (removed from imputation model)
 id_vars <- c("wave", "weights")
@@ -392,10 +416,10 @@ bounds_matrix <- matrix(c(
 
 # run Amelia
 head(amelia_data)
-cat("Running Amelia with m=5 imputations...\n")
+cat("Running Amelia with m=10 imputations...\n")
 amelia_out <- amelia(
   amelia_data,
-  m = 5,
+  m = 10,
   idvars = id_vars,
   noms = nominal_vars,
   bounds = bounds_matrix,
@@ -429,7 +453,7 @@ mids_data <- fix_mids_factors(mids_data, c("trust_science_factor", "trust_scient
 # fit GEE models for imputed data
 cat("\n\n=== FITTING GEE MODELS TO IMPUTED DATA ===\n")
 
-gee_science_imputed <- lapply(1:5, function(i) {
+gee_science_imputed <- lapply(1:10, function(i) {
   dat_imp <- mice::complete(mids_data, i) %>%
     arrange(id, years)
   geepack::geeglm(
@@ -481,3 +505,11 @@ ggsave("results/figures/test_3_imputation_comparison.png", p_gee_comparison,
        width = 15, height = 5, dpi = 300)
 
 cat("\n\nAnalysis complete! Check if imputation better tracks the oracle data.\n")
+
+# check demographic prediction in imputed data
+cat("\n\n=== CHECKING DEMOGRAPHIC PREDICTION IN IMPUTED DATA ===\n")
+imp1 <- mice::complete(mids_data, 1)
+imp_model <- lm(trust_science ~ education + age_baseline + gender + ethnicity, data = imp1)
+cat("R-squared of demographics predicting trust in imputed data:", round(summary(imp_model)$r.squared, 3), "\n")
+cat("Coefficients:\n")
+print(round(coef(imp_model), 3))

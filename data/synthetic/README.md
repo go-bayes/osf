@@ -30,12 +30,13 @@ This folder contains synthetic data generation scripts and outputs that demonstr
 The synthetic data uses a three-group simulation design with improved features:
 
 #### Baseline Distribution
-- **Trust in Science**: Generated from correlated bivariate normal distribution (r≈0.6)
-  - Low trust group (education 1-2): Mean ~2.9
-  - Medium trust group (education 3-5): Mean ~5.15
-  - High trust group (education 6-7): Mean ~6.1
-- **Trust in Scientists**: Correlated with trust in science
-  - Low: Mean ~2.7, Medium: Mean ~4.95, High: Mean ~5.9
+- **Trust in Science**: Generated from demographic predictors + bivariate normal distribution (r≈0.7)
+  - Base formula: 4.0 + 0.3×education + 0.01×(age-50) + 0.2×female + ethnicity effects
+  - Education effect: +0.3 per level (strongest predictor)
+  - Age effect: +0.01 per year above 50
+  - Gender effect: Females +0.2 higher trust
+  - Ethnicity effects: Māori -0.3, Pacific -0.2, Asian +0.1
+- **Trust in Scientists**: Same predictors, slightly lower intercept (3.8)
 
 #### Group Trajectories (Linear Slopes)
 - **High trust group** (education 6-7): +0.2 per year

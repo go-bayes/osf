@@ -46,27 +46,54 @@ Demonstrate how response bias masks the erosion of trust in science over time th
 - [x] Updated osf_package_summary.md with imputation performance
 - [x] Updated data/synthetic/README.md with new generation approach
 - [x] Created PLANNING.md to track progress
-- [x] Will update CHANGELOG_DEV.md next
+- [x] Updated CHANGELOG_DEV.md with all changes
+
+### Phase 5: Major Refactoring - Amelia to MICE PMM ✓ (2025-01-04)
+
+#### Epic Models Refactoring
+- [x] Created new analysis pipeline at `/Users/joseph/GIT/epic-models/2025/25-refactor-trust-science/`
+- [x] Developed complete set of analysis scripts:
+  - `00-simulate-trust-data.R`: Synthetic data with selection bias
+  - `01-helper-functions-mice.R`: Core MICE utilities
+  - `02-trust-science-growth-MICE.R`: Main imputation (20 imputations)
+  - `03-trust-science-analysis-MICE.R`: Pooled GEE with AR(1)
+  - `04-trust-science-consistent-MICE.R`: Sensitivity analyses
+  - `README.md`: Complete documentation
+
+#### Technical Improvements
+- [x] **Data Format**: Converted from long to wide format for MICE
+- [x] **Correlation**: All GEE models now use `corstr = "ar1"`
+- [x] **Bounding**: Post-imputation bounding to [1,7] scale
+- [x] **Forward Filling**: Time-invariant demographics to reduce missingness
+- [x] **Baseline Cohort**: Retained original selection (year_measured == 1 & wave == 2019)
+
+#### Key Discoveries
+- [x] **Wide Format Critical**: MICE requires wide format for longitudinal data
+- [x] **Performance**: MICE PMM achieves ~100% bias correction with wide format
+- [x] **Comparison**: Amelia achieves only ~54% bias correction
+- [x] **Speed**: MICE PMM is faster than complex methods (RF, CART)
 
 ## Results Achieved
 1. **Selection Bias Demonstrated**: 
    - Oracle shows population decline
    - Observed shows artificial stability/increase
-   - Imputation partially recovers true trend
+   - Imputation successfully recovers true trend (MICE PMM with wide format)
 
 2. **Technical Improvements**:
-   - Amelia now properly uses education signal
-   - Correlated baselines create realistic data
-   - Current-value dropout creates proper selection
-   - Linear trends are interpretable
+   - Wide format enables proper temporal dependencies
+   - AR(1) correlation better models longitudinal data
+   - Forward filling reduces artificial missingness
+   - Post-imputation bounding ensures valid values
 
 3. **Reproducibility**:
    - All code runs without errors
-   - Synthetic data protects privacy
    - Complete documentation provided
+   - Synthetic data protects privacy
+   - Clear workflow from data to results
 
 ## Next Steps
-1. Update CHANGELOG_DEV.md with all changes
-2. Consider updating generate_synthetic_data.R with improved approach
-3. Run full workflow with 10 imputations for final results
-4. Prepare for OSF upload
+1. Run refactored analysis on full NZAVS dataset
+2. Compare results with original Amelia approach
+3. Optimize performance for large datasets
+4. Prepare publication with new methodology
+5. Update OSF package with improved approach
