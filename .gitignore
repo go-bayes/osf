@@ -1,6 +1,31 @@
+# R project files
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
+
+# Data files
+*.csv
+*.rds
+*.qs
+*.RData
+*.Rdata
+
+# Keep synthetic examples
+!data/synthetic/README.md
+!data/synthetic/generate_synthetic_data.R
+
+# Keep templates
+!data/templates/*
+
+# Results data
+results/**/*.rds
+results/**/*.csv
+
+# R temporary files
+Rplots.pdf
+
+# OS files
 .DS_Store
 **/.DS_Store
+Thumbs.db

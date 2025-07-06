@@ -1,6 +1,6 @@
-# Trust in Science: Reproducible Analysis
+# Trust in Science: Sensitivity Analysis of Imputation Methods
 
-This repository contains the complete analysis code for "Response Bias Masks the Erosion of Trust in Science Over Time"
+This repository contains code for evaluating different missing data imputation methods in the context of trust in science longitudinal data. It extends the original synthetic data generation to comprehensively compare imputation approaches.
 
 ## Important Note on Data Access
 
@@ -48,12 +48,13 @@ If you have access to the NZAVS data:
 2. Set `USE_REAL_DATA <- TRUE` in the config file
 3. Run the numbered scripts in `code/` sequentially
 
-## Key Findings
+## Key Findings from Method Comparison
 
-- Trust in science and scientists initially increased during COVID-19 response
-- Both measures subsequently declined below baseline levels
-- This erosion is masked in observed data due to selective attrition
-- Multiple imputation reveals the true trajectory
+- **Complete Case Analysis**: Severely biased due to differential attrition
+- **MICE PMM (wide format)**: Near-perfect recovery of true trends (100% bias reduction)
+- **Amelia**: Moderate recovery (~54% bias reduction) due to assumed common trends
+- **IPCW**: Good for homogeneous populations, may struggle with heterogeneous trajectories
+- **Critical insight**: Data format matters - MICE requires wide format for longitudinal data
 
 ## Statistical Methods
 

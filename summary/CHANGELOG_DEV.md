@@ -1,5 +1,39 @@
 # CHANGELOG_DEV.md
 
+## 2025-01-06 - Major Repository Cleanup and Enhancement
+
+### Repository Reorganization
+- Created `keep/` directory for important scripts
+  - Moved `test_2_with_ipcw.R` (primary comparison with IPCW)
+  - Moved `test_3_improved.R` (comprehensive method comparison)
+  - Moved `method_comparison_summary.R` (useful summary)
+- Created `retired/` directory for old test scripts
+- Removed all data files (.csv, .rds, .qs)
+- Updated .gitignore to exclude data files while keeping synthetic examples
+
+### Enhanced Method Comparisons
+- Created `compare_imputation_methods_enhanced.R` with:
+  - Reduced imputation count (m=5) for efficiency
+  - Categorical outcome analysis (Low/Medium/High proportions)
+  - Ordinal model comparison using MASS::polr
+  - Comprehensive performance metrics
+  
+### Key Enhancements
+- **Categorical Analysis**: Track proportion shifts in trust categories
+- **Ordinal Models**: Compare threshold recovery across methods
+- **Streamlined Workflow**: Focus on 5 methods (Oracle, Complete Case, MICE, Amelia, IPCW)
+- **Enhanced Metrics**: MAE, bias, category shift detection, threshold recovery
+
+### Documentation Updates
+- Updated README.md to reflect new focus on method sensitivity analysis
+- Created METHODS_COMPARISON.md with detailed guidance
+- Fixed all dplyr::select() namespace issues
+
+### Repository Purpose Change
+- From: "Response Bias Masks the Erosion of Trust in Science"
+- To: "Sensitivity Analysis of Imputation Methods for Trust in Science Data"
+- Now focuses on comprehensive method evaluation beyond synthetic data
+
 ## 2025-01-04 - Major Refactoring: Amelia to MICE PMM
 
 ### Epic Models Refactoring Complete
