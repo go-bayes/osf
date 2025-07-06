@@ -46,16 +46,16 @@ cat("\nGenerating baseline trust from demographic predictors...\n")
 participants <- participants %>%
   mutate(
     # calculate mean trust from demographics
-    trust_science_mean = 4.0 + 
+    trust_science_mean = 4.0 +
       0.3 * education +
       0.01 * (age_baseline - 50) +
       0.2 * (gender == "Female") +
       -0.3 * (ethnicity == "Maori") +
       -0.2 * (ethnicity == "Pacific") +
       0.1 * (ethnicity == "Asian"),
-    
+
     # trust in scientists slightly lower overall but same predictors
-    trust_scientists_mean = 3.8 + 
+    trust_scientists_mean = 3.8 +
       0.3 * education +
       0.01 * (age_baseline - 50) +
       0.2 * (gender == "Female") +
@@ -94,7 +94,7 @@ aggregate(trust_science_baseline ~ trust_group, data = participants,
 
 # check demographic effects
 cat("\nDemographic effects on trust:\n")
-demo_model <- lm(trust_science_baseline ~ education + age_baseline + gender + ethnicity, 
+demo_model <- lm(trust_science_baseline ~ education + age_baseline + gender + ethnicity,
                  data = participants)
 print(round(coef(demo_model), 3))
 
