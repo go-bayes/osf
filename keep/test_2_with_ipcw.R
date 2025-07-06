@@ -88,24 +88,24 @@ cat("Generating trust outcomes with group-specific trajectories...\n")
 long_data$trust_science <- with(long_data, {
   # start with baseline
   trust <- trust_science_baseline
-  
+
   # year effects by group
   trust[years == 1 & trust_group == "high"] <- trust[years == 1 & trust_group == "high"] + 0.2
   trust[years == 1 & trust_group == "medium"] <- trust[years == 1 & trust_group == "medium"] + 0.05
   trust[years == 1 & trust_group == "low"] <- trust[years == 1 & trust_group == "low"] - 0.3
-  
+
   trust[years == 2 & trust_group == "high"] <- trust[years == 2 & trust_group == "high"] + 0.3
   trust[years == 2 & trust_group == "medium"] <- trust[years == 2 & trust_group == "medium"] + 0.05
   trust[years == 2 & trust_group == "low"] <- trust[years == 2 & trust_group == "low"] - 0.5
-  
+
   trust[years == 3 & trust_group == "high"] <- trust[years == 3 & trust_group == "high"] + 0.35
   trust[years == 3 & trust_group == "medium"] <- trust[years == 3 & trust_group == "medium"] + 0.0
   trust[years == 3 & trust_group == "low"] <- trust[years == 3 & trust_group == "low"] - 0.7
-  
+
   trust[years == 4 & trust_group == "high"] <- trust[years == 4 & trust_group == "high"] + 0.4
   trust[years == 4 & trust_group == "medium"] <- trust[years == 4 & trust_group == "medium"] + 0.0
   trust[years == 4 & trust_group == "low"] <- trust[years == 4 & trust_group == "low"] - 0.9
-  
+
   # add measurement error
   trust + rnorm(length(trust), 0, 0.15)
 })
@@ -114,24 +114,24 @@ long_data$trust_science <- with(long_data, {
 long_data$trust_scientists <- with(long_data, {
   # start with baseline
   trust <- trust_scientists_baseline
-  
+
   # year effects by group
   trust[years == 1 & trust_group == "high"] <- trust[years == 1 & trust_group == "high"] + 0.25
   trust[years == 1 & trust_group == "medium"] <- trust[years == 1 & trust_group == "medium"] + 0.1
   trust[years == 1 & trust_group == "low"] <- trust[years == 1 & trust_group == "low"] - 0.25
-  
+
   trust[years == 2 & trust_group == "high"] <- trust[years == 2 & trust_group == "high"] + 0.35
   trust[years == 2 & trust_group == "medium"] <- trust[years == 2 & trust_group == "medium"] + 0.1
   trust[years == 2 & trust_group == "low"] <- trust[years == 2 & trust_group == "low"] - 0.45
-  
+
   trust[years == 3 & trust_group == "high"] <- trust[years == 3 & trust_group == "high"] + 0.4
   trust[years == 3 & trust_group == "medium"] <- trust[years == 3 & trust_group == "medium"] + 0.05
   trust[years == 3 & trust_group == "low"] <- trust[years == 3 & trust_group == "low"] - 0.65
-  
+
   trust[years == 4 & trust_group == "high"] <- trust[years == 4 & trust_group == "high"] + 0.45
   trust[years == 4 & trust_group == "medium"] <- trust[years == 4 & trust_group == "medium"] + 0.05
   trust[years == 4 & trust_group == "low"] <- trust[years == 4 & trust_group == "low"] - 0.85
-  
+
   # add measurement error
   trust + rnorm(length(trust), 0, 0.15)
 })
@@ -235,10 +235,10 @@ dat_ipcw <- observed_data %>%
     # lagged variables
     trust_science_lag1 = lag(trust_science, 1),
     trust_scientists_lag1 = lag(trust_scientists, 1),
-    
+
     # dropout indicator
     observed = as.numeric(!is.na(trust_science)),
-    
+
     # at risk indicator
     at_risk = lag(observed, default = 1) == 1
   ) %>%
@@ -251,7 +251,7 @@ dat_at_risk <- dat_ipcw %>%
 # merge baseline values
 baseline_data <- dat_ipcw %>%
   filter(years == 0) %>%
-  select(id, age_baseline, gender, education) %>%
+  dplyr::select(id, age_baseline, gender, education) %>%
   rename(
     age_b = age_baseline,
     gender_b = gender,
@@ -263,7 +263,7 @@ dat_model <- dat_at_risk %>%
 
 # fit dropout model
 dropout_model <- glm(
-  observed ~ trust_science_lag1 + trust_scientists_lag1 + 
+  observed ~ trust_science_lag1 + trust_scientists_lag1 +
     age_b + gender_b + education_b + factor(years),
   data = dat_model,
   family = binomial
@@ -297,7 +297,7 @@ dat_weights <- dat_model %>%
     weight_cumulative = cumprod(weight_trunc)
   ) %>%
   ungroup() %>%
-  select(id, years, weight_cumulative)
+  dplyr::select(id, years, weight_cumulative)
 
 # merge back
 dat_weighted <- dat_ipcw %>%
@@ -324,7 +324,7 @@ cat("\n\n=== METHOD 3: AMELIA IMPUTATION ===\n")
 
 # prepare for Amelia
 amelia_data <- observed_data %>%
-  select(-trust_group, -missing) %>%
+  dplyr::select(-trust_group, -missing) %>%
   arrange(id, years)
 
 amelia_data$wave <- as.character(amelia_data$wave)
@@ -375,7 +375,7 @@ cat("\n\n=== METHOD 4: MICE IMPUTATION ===\n")
 
 # create simple wide format
 wide_data <- amelia_data %>%
-  select(id, years, trust_science, trust_scientists, age_baseline, gender, education, weights) %>%
+  dplyr::select(id, years, trust_science, trust_scientists, age_baseline, gender, education, weights) %>%
   pivot_wider(
     id_cols = c(id, age_baseline, gender, education, weights),
     names_from = years,
@@ -423,7 +423,7 @@ cat("\n\n=== COMPARING METHOD PERFORMANCE ===\n")
 
 # combine all results
 comparison_data <- bind_rows(
-  oracle_means %>% select(years, mean_trust_science) %>% mutate(method = "Oracle (Truth)"),
+  oracle_means %>% dplyr::select(years, mean_trust_science) %>% mutate(method = "Oracle (Truth)"),
   complete_case_means %>% mutate(method = "Complete Case"),
   ipcw_means %>% mutate(method = "IPCW"),
   amelia_means %>% mutate(method = "Amelia"),
@@ -434,7 +434,7 @@ comparison_data <- bind_rows(
 error_summary <- comparison_data %>%
   filter(method != "Oracle (Truth)") %>%
   left_join(
-    oracle_means %>% select(years, oracle_mean = mean_trust_science),
+    oracle_means %>% dplyr::select(years, oracle_mean = mean_trust_science),
     by = "years"
   ) %>%
   mutate(
@@ -456,8 +456,8 @@ cat("\nError Summary (lower is better):\n")
 print(error_summary)
 
 # visualization
-comparison_plot <- ggplot(comparison_data, 
-                         aes(x = years, y = mean_trust_science, 
+comparison_plot <- ggplot(comparison_data,
+                         aes(x = years, y = mean_trust_science,
                              color = method, linetype = method)) +
   geom_line(size = 1.2) +
   geom_point(size = 3) +
@@ -492,7 +492,7 @@ print(comparison_plot)
 bias_data <- comparison_data %>%
   filter(method != "Oracle (Truth)") %>%
   left_join(
-    oracle_means %>% select(years, oracle_mean = mean_trust_science),
+    oracle_means %>% dplyr::select(years, oracle_mean = mean_trust_science),
     by = "years"
   ) %>%
   mutate(bias = mean_trust_science - oracle_mean)

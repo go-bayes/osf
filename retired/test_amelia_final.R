@@ -20,8 +20,8 @@ cat("- Missing trust_scientists:", sum(is.na(test_data$trust_scientists)), "\n\n
 cat("Running Amelia with continuous trust variables...\n")
 
 # only specify bounds, not ords for trust variables
-bounds_matrix <- matrix(c(11, 1, 7, 12, 1, 7), nrow = 2, ncol = 3, byrow = TRUE)
-
+bounds_matrix <- matrix(c(9, 1, 7, 10, 1, 7), nrow = 2, ncol = 3, byrow = TRUE)
+test_data
 am_result <- amelia(
   test_data,
   m = 3,
@@ -40,13 +40,13 @@ cat("- Number of imputations:", length(am_result$imputations), "\n")
 
 if (length(am_result$imputations) > 0) {
   cat("\n✓ SUCCESS! Amelia created", length(am_result$imputations), "imputations\n")
-  
+
   # check first imputation
   imp1 <- am_result$imputations[[1]]
   cat("\nFirst imputation check:\n")
   cat("- Complete trust_science:", sum(!is.na(imp1$trust_science)), "\n")
   cat("- Complete trust_scientists:", sum(!is.na(imp1$trust_scientists)), "\n")
-  
+
   # save result for further use
   saveRDS(am_result, "test_amelia_result.rds")
   cat("\nSaved Amelia result to test_amelia_result.rds\n")
@@ -56,3 +56,4 @@ if (length(am_result$imputations) > 0) {
 }
 
 cat("\n=== TEST COMPLETE ===\n")
+

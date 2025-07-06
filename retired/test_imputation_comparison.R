@@ -44,15 +44,15 @@ participants$trust_group <- case_when(
 # generate baseline trust from demographic predictors
 participants <- participants %>%
   mutate(
-    trust_science_mean = 4.0 + 
+    trust_science_mean = 4.0 +
       0.3 * education +
       0.01 * (age_baseline - 50) +
       0.2 * (gender == "Female") +
       -0.3 * (ethnicity == "Maori") +
       -0.2 * (ethnicity == "Pacific") +
       0.1 * (ethnicity == "Asian"),
-    
-    trust_scientists_mean = 3.8 + 
+
+    trust_scientists_mean = 3.8 +
       0.3 * education +
       0.01 * (age_baseline - 50) +
       0.2 * (gender == "Female") +
@@ -128,7 +128,7 @@ observed_data <- long_data %>%
     trust_science = trust_science_obs,
     trust_scientists = trust_scientists_obs
   ) %>%
-  dplyr::select(-trust_science_obs, -trust_scientists_obs, 
+  dplyr::select(-trust_science_obs, -trust_scientists_obs,
                 -trust_group, -drop_prob, -dropped,
                 -trust_science_baseline, -trust_scientists_baseline,
                 -trust_science_mean, -trust_scientists_mean) %>%
@@ -215,7 +215,7 @@ mice_results <- list()
 for (method in methods) {
   cat("\nRunning MICE with", method, "...\n")
   start_time <- Sys.time()
-  
+
   mice_obj <- mice(
     observed_data,
     predictorMatrix = predM,
@@ -224,16 +224,16 @@ for (method in methods) {
     maxit = 10,
     printFlag = FALSE
   )
-  
+
   cat("Time taken:", round(difftime(Sys.time(), start_time, units = "secs"), 1), "seconds\n")
-  
+
   # get predictions
   preds <- lapply(1:5, function(i) {
     dat_imp <- complete(mice_obj, i) %>% arrange(id, years)
     mod <- geeglm(trust_science ~ ns(years, 3), id = id, data = dat_imp)
     predict_response(mod, "years[all]")
   })
-  
+
   mice_results[[method]] <- data.frame(
     method = method,
     predicted = rowMeans(sapply(preds, function(p) p$predicted))

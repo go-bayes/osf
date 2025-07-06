@@ -52,7 +52,7 @@ if (length(am_result$imputations) > 0) {
   cat("\n✓ SUCCESS!\n")
 } else {
   cat("\n✗ Failed. Trying without p2s=0...\n")
-  
+
   # try without p2s=0
   am_result2 <- amelia(
     test_data,
@@ -62,7 +62,8 @@ if (length(am_result$imputations) > 0) {
     ts = "years",
     cs = "id"
   )
-  
+
   cat("Result without p2s=0:\n")
   cat("- Imputations:", length(am_result2$imputations), "\n")
 }
+

@@ -175,6 +175,7 @@ for (i in trust_vars) {
     }
   }
 }
+
 predM[, "id"] <- 0
 predM["id", ] <- 0
 
@@ -348,3 +349,4 @@ cat("1. Wide format is crucial for MICE methods to capture longitudinal dependen
 cat("2. All imputation methods partially recover the true declining trend\n")
 cat("3. MICE methods with wide format perform remarkably well (>90% bias reduction)\n")
 cat("4. Random forests (miceRanger) and parametric methods perform similarly\n")
+
