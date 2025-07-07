@@ -131,7 +131,7 @@ gee_science_imputed <- lapply(1:N_IMPUTATIONS, function(i) {
 
   dat_imp <- mice::complete(mids_obj, action = i) %>%
     arrange(id, years)  # ensure proper sorting for GEE
-  
+
   m <- geepack::geeglm(
     trust_science ~ ns(years, 3),
     id = id,
@@ -156,7 +156,7 @@ gee_scientists_imputed <- lapply(1:N_IMPUTATIONS, function(i) {
 
   dat_imp <- mice::complete(mids_obj, action = i) %>%
     arrange(id, years)  # ensure proper sorting for GEE
-  
+
   m <- geepack::geeglm(
     trust_scientists ~ ns(years, 3),
     id = id,
@@ -337,7 +337,7 @@ cat("\n=== ANALYZING ORACLE DATA (GROUND TRUTH) ===\n")
 oracle_path <- "data/synthetic/oracle_trust_data.csv"
 if (file.exists(oracle_path)) {
   dat_oracle <- read.csv(oracle_path)
-  
+
   # add factor variables and ensure sorting
   dat_oracle <- dat_oracle %>%
     mutate(
@@ -355,12 +355,12 @@ if (file.exists(oracle_path)) {
         factor(levels = c("low", "med", "high"), ordered = TRUE)
     ) %>%
     arrange(id, years)  # ensure proper sorting for GEE models
-  
+
   cat("Oracle data loaded:", nrow(dat_oracle), "observations\n")
-  
+
   # fit GEE models to oracle data
   cat("\nFitting GEE models to oracle data...\n")
-  
+
   gee_science_oracle <- geepack::geeglm(
     trust_science ~ ns(years, 3),
     id = id,
@@ -368,7 +368,7 @@ if (file.exists(oracle_path)) {
     data = dat_oracle,
     corstr = "exchangeable"
   )
-  
+
   gee_scientists_oracle <- geepack::geeglm(
     trust_scientists ~ ns(years, 3),
     id = id,
@@ -376,7 +376,7 @@ if (file.exists(oracle_path)) {
     data = dat_oracle,
     corstr = "exchangeable"
   )
-  
+
   # generate predictions
   gee_predictions_science_oracle <- ggeffects::predict_response(
     gee_science_oracle,
@@ -384,17 +384,17 @@ if (file.exists(oracle_path)) {
     margin = "marginalmeans",
     vcov_type = "robust"
   )
-  
+
   gee_predictions_scientists_oracle <- ggeffects::predict_response(
     gee_scientists_oracle,
     "years[all]",
     margin = "marginalmeans",
     vcov_type = "robust"
   )
-  
+
   # create plots with specified settings
   cat("Creating oracle data plots...\n")
-  
+
   oracle_science_plot <- plot(
     gee_predictions_science_oracle,
     show_data = TRUE,
@@ -417,7 +417,7 @@ if (file.exists(oracle_path)) {
       title = "Trust in Science - Oracle Data (Ground Truth)"
     ) +
     theme_bw()
-  
+
   oracle_scientists_plot <- plot(
     gee_predictions_scientists_oracle,
     show_data = TRUE,
@@ -440,53 +440,53 @@ if (file.exists(oracle_path)) {
       title = "Trust in Scientists - Oracle Data (Ground Truth)"
     ) +
     theme_bw()
-  
+
   # save oracle plots
   library(patchwork)
-  
+
   oracle_combined <- oracle_science_plot + oracle_scientists_plot +
     plot_annotation(
       title = "Oracle Data: True Population Trends (No Missing Data)",
       subtitle = "Shows actual trust trajectories before selective attrition"
     )
-  
+
   ggsave(
     filename = "results/figures/oracle_combined.png",
     plot = oracle_combined,
     width = 14, height = 6, dpi = 300
   )
-  
+
   # print oracle results
   cat("\nOracle Data Results:\n")
   cat("\nTrust in Science (Oracle - Ground Truth):\n")
   cat("  Year 0:", round(gee_predictions_science_oracle$predicted[1], 3), "\n")
   cat("  Year 4:", round(gee_predictions_science_oracle$predicted[5], 3), "\n")
-  cat("  Change:", round(gee_predictions_science_oracle$predicted[5] - 
+  cat("  Change:", round(gee_predictions_science_oracle$predicted[5] -
                        gee_predictions_science_oracle$predicted[1], 3), "\n")
-  
+
   cat("\nTrust in Scientists (Oracle - Ground Truth):\n")
   cat("  Year 0:", round(gee_predictions_scientists_oracle$predicted[1], 3), "\n")
   cat("  Year 4:", round(gee_predictions_scientists_oracle$predicted[5], 3), "\n")
-  cat("  Change:", round(gee_predictions_scientists_oracle$predicted[5] - 
+  cat("  Change:", round(gee_predictions_scientists_oracle$predicted[5] -
                        gee_predictions_scientists_oracle$predicted[1], 3), "\n")
-  
+
   # create comparison plot
   cat("\nCreating comparison plot (Observed vs Imputed vs Oracle)...\n")
-  
+
   # prepare data for comparison
   comparison_science <- bind_rows(
-    gee_predictions_science_observed %>% 
-      as.data.frame() %>% 
+    gee_predictions_science_observed %>%
+      as.data.frame() %>%
       mutate(Data = "Observed (Complete Cases)"),
-    gee_predictions_science_imputed %>% 
-      as.data.frame() %>% 
+    gee_predictions_science_imputed %>%
+      as.data.frame() %>%
       mutate(Data = "Imputed (Missing Corrected)"),
-    gee_predictions_science_oracle %>% 
-      as.data.frame() %>% 
+    gee_predictions_science_oracle %>%
+      as.data.frame() %>%
       mutate(Data = "Oracle (Ground Truth)")
   )
-  
-  comparison_plot <- ggplot(comparison_science, aes(x = x, y = predicted, 
+
+  comparison_plot <- ggplot(comparison_science, aes(x = x, y = predicted,
                                                     color = Data, fill = Data)) +
     geom_ribbon(aes(ymin = conf.low, ymax = conf.high), alpha = 0.2, color = NA) +
     geom_line(linewidth = 1.2) +
@@ -507,18 +507,17 @@ if (file.exists(oracle_path)) {
     ) +
     theme_bw() +
     theme(legend.position = "bottom")
-  
+
   ggsave(
     filename = "results/figures/comparison_trust_science.png",
     plot = comparison_plot,
     width = 10, height = 8, dpi = 300
   )
-  
+
   cat("  ✓ Oracle analysis complete\n")
-  
+
 } else {
   cat("\nWarning: Oracle data not found at:", oracle_path, "\n")
 }
-
 cat("\nNext step: Run 03_create_visualizations.R\n")
 

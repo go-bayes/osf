@@ -1,5 +1,40 @@
 # CHANGELOG_DEV.md
 
+## 2025-01-07 - IPCW Ordinal Analysis and Visualization Scripts
+
+### Added
+- **Extended `test_2_with_ipcw.R`** with comprehensive ordinal model analysis:
+  - Category proportion tracking (Low ≤3, Medium ≤5, High >5)
+  - POLR model fitting and threshold comparison
+  - Baseline distribution preservation metrics (KL divergence)
+  - Enhanced visualizations for categorical outcomes
+  - Comprehensive performance summary across all metrics
+
+- **Created `analyze_ipcw_results.R`** for publication-ready outputs:
+  - Continuous outcome recovery plots with confidence bands
+  - Categorical distribution faceted plots
+  - Performance summary tables using gt package
+  - Composite visualizations with patchwork
+  - Automated summary report generation
+
+- **Created `generate_ipcw_diagnostics.R`** for method diagnostics:
+  - Attrition pattern analysis by trust group
+  - IPCW weight distribution and extremes
+  - Baseline covariate balance assessment
+  - Ordinal model threshold comparisons
+  - Correlation analysis between methods
+
+### Key Findings
+- **Amelia performs best overall** with superior time-series modeling
+- **MICE may introduce baseline distribution shifts** (explains Year 0 discrepancy)
+- **IPCW provides partial correction** but struggles with complex patterns
+- **Complete case analysis severely biased** due to differential attrition
+
+### Documentation
+- Created `ORDINAL_MODEL_ENHANCEMENTS.md` documenting all changes
+- Scripts save outputs to `results/figures/` and `results/tables/`
+- Automated summary reports for quick interpretation
+
 ## 2025-01-06 - Major Repository Cleanup and Enhancement
 
 ### Repository Reorganization

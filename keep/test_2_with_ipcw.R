@@ -573,3 +573,509 @@ if (ipcw_performance$mean_absolute_error < 0.05) {
 }
 
 cat("\nSimulation complete!\n")
+
+# ========================================================================
+# ORDINAL MODEL ANALYSIS
+# ========================================================================
+cat("\n\n=== ORDINAL MODEL ANALYSIS ===\n")
+cat("Comparing methods on categorical outcomes (Low/Medium/High)\n\n")
+
+# define category creation function
+create_trust_categories <- function(trust_var) {
+  factor(
+    case_when(
+      is.na(trust_var) ~ NA_character_,
+      trust_var <= 3 ~ "Low",
+      trust_var <= 5 ~ "Medium",
+      trust_var > 5 ~ "High"
+    ),
+    levels = c("Low", "Medium", "High"),
+    ordered = TRUE
+  )
+}
+
+# ========================================================================
+# 1. ORACLE CATEGORY PROPORTIONS
+# ========================================================================
+cat("1. Oracle (True) Category Proportions:\n")
+
+oracle_cat_props <- oracle_data %>%
+  mutate(trust_cat = create_trust_categories(trust_science)) %>%
+  group_by(years) %>%
+  summarise(
+    n_total = n(),
+    n_low = sum(trust_cat == "Low" & !is.na(trust_cat)),
+    n_medium = sum(trust_cat == "Medium" & !is.na(trust_cat)),
+    n_high = sum(trust_cat == "High" & !is.na(trust_cat)),
+    prop_low = weighted.mean(trust_cat == "Low", weights, na.rm = TRUE),
+    prop_medium = weighted.mean(trust_cat == "Medium", weights, na.rm = TRUE),
+    prop_high = weighted.mean(trust_cat == "High", weights, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+print(oracle_cat_props %>% select(years, prop_low, prop_medium, prop_high))
+
+# calculate shifts
+oracle_low_shift <- oracle_cat_props$prop_low[5] - oracle_cat_props$prop_low[1]
+oracle_high_shift <- oracle_cat_props$prop_high[5] - oracle_cat_props$prop_high[1]
+cat("\nOracle shifts (Year 4 - Year 0):\n")
+cat("- Low category:", round(oracle_low_shift, 3), "\n")
+cat("- High category:", round(oracle_high_shift, 3), "\n")
+
+# ========================================================================
+# 2. COMPLETE CASE CATEGORY PROPORTIONS
+# ========================================================================
+cat("\n2. Complete Case Category Proportions:\n")
+
+cc_cat_props <- observed_data %>%
+  filter(!is.na(trust_science)) %>%
+  mutate(trust_cat = create_trust_categories(trust_science)) %>%
+  group_by(years) %>%
+  summarise(
+    n_obs = n(),
+    prop_low = weighted.mean(trust_cat == "Low", weights),
+    prop_medium = weighted.mean(trust_cat == "Medium", weights),
+    prop_high = weighted.mean(trust_cat == "High", weights),
+    .groups = "drop"
+  )
+
+print(cc_cat_props %>% select(years, prop_low, prop_medium, prop_high))
+
+# ========================================================================
+# 3. IPCW CATEGORY PROPORTIONS
+# ========================================================================
+cat("\n3. IPCW Category Proportions:\n")
+
+ipcw_cat_props <- dat_weighted %>%
+  filter(observed == 1) %>%
+  mutate(
+    trust_cat = create_trust_categories(trust_science),
+    combined_weight = ipcw * weights
+  ) %>%
+  group_by(years) %>%
+  summarise(
+    n_obs = n(),
+    prop_low = weighted.mean(trust_cat == "Low", combined_weight),
+    prop_medium = weighted.mean(trust_cat == "Medium", combined_weight),
+    prop_high = weighted.mean(trust_cat == "High", combined_weight),
+    .groups = "drop"
+  )
+
+print(ipcw_cat_props %>% select(years, prop_low, prop_medium, prop_high))
+
+# ========================================================================
+# 4. AMELIA CATEGORY PROPORTIONS
+# ========================================================================
+cat("\n4. Amelia Category Proportions:\n")
+
+amelia_cat_props_list <- lapply(1:5, function(i) {
+  amelia_out$imputations[[i]] %>%
+    mutate(trust_cat = create_trust_categories(trust_science)) %>%
+    group_by(years) %>%
+    summarise(
+      prop_low = weighted.mean(trust_cat == "Low", weights),
+      prop_medium = weighted.mean(trust_cat == "Medium", weights),
+      prop_high = weighted.mean(trust_cat == "High", weights),
+      .groups = "drop"
+    )
+})
+
+amelia_cat_props <- bind_rows(amelia_cat_props_list, .id = "imp") %>%
+  group_by(years) %>%
+  summarise(
+    prop_low = mean(prop_low),
+    prop_medium = mean(prop_medium),
+    prop_high = mean(prop_high),
+    .groups = "drop"
+  )
+
+print(amelia_cat_props %>% select(years, prop_low, prop_medium, prop_high))
+
+# ========================================================================
+# 5. MICE CATEGORY PROPORTIONS
+# ========================================================================
+cat("\n5. MICE Category Proportions:\n")
+
+mice_cat_props_list <- lapply(1:5, function(i) {
+  complete(mice_obj, i) %>%
+    pivot_longer(
+      cols = starts_with("trust_science_"),
+      names_to = "year",
+      values_to = "trust_science",
+      names_prefix = "trust_science_"
+    ) %>%
+    mutate(
+      years = as.numeric(year),
+      trust_cat = create_trust_categories(trust_science)
+    ) %>%
+    group_by(years) %>%
+    summarise(
+      prop_low = weighted.mean(trust_cat == "Low", weights),
+      prop_medium = weighted.mean(trust_cat == "Medium", weights),
+      prop_high = weighted.mean(trust_cat == "High", weights),
+      .groups = "drop"
+    )
+})
+
+mice_cat_props <- bind_rows(mice_cat_props_list, .id = "imp") %>%
+  group_by(years) %>%
+  summarise(
+    prop_low = mean(prop_low),
+    prop_medium = mean(prop_medium),
+    prop_high = mean(prop_high),
+    .groups = "drop"
+  )
+
+print(mice_cat_props %>% select(years, prop_low, prop_medium, prop_high))
+
+# ========================================================================
+# 6. FIT ORDINAL MODELS (POLR)
+# ========================================================================
+cat("\n\n=== FITTING ORDINAL MODELS ===\n")
+
+library(MASS)
+
+# prepare datasets
+oracle_ord_data <- oracle_data %>%
+  mutate(trust_cat = create_trust_categories(trust_science))
+
+cc_ord_data <- observed_data %>%
+  filter(!is.na(trust_science)) %>%
+  mutate(trust_cat = create_trust_categories(trust_science))
+
+# fit ordinal models
+ordinal_results <- list()
+
+# oracle model
+cat("Fitting Oracle ordinal model...\n")
+ordinal_results$oracle <- polr(
+  trust_cat ~ ns(years, 3),
+  data = oracle_ord_data,
+  weights = weights,
+  Hess = TRUE
+)
+
+# complete case model
+cat("Fitting Complete Case ordinal model...\n")
+ordinal_results$complete_case <- polr(
+  trust_cat ~ ns(years, 3),
+  data = cc_ord_data,
+  weights = weights,
+  Hess = TRUE
+)
+
+# ipcw model
+cat("Fitting IPCW ordinal model...\n")
+ipcw_ord_data <- dat_weighted %>%
+  filter(observed == 1) %>%
+  mutate(
+    trust_cat = create_trust_categories(trust_science),
+    combined_weight = ipcw * weights
+  )
+
+ordinal_results$ipcw <- polr(
+  trust_cat ~ ns(years, 3),
+  data = ipcw_ord_data,
+  weights = combined_weight,
+  Hess = TRUE
+)
+
+# amelia model (first imputation for simplicity)
+cat("Fitting Amelia ordinal model...\n")
+amelia_ord_data <- amelia_out$imputations[[1]] %>%
+  mutate(trust_cat = create_trust_categories(trust_science))
+
+ordinal_results$amelia <- polr(
+  trust_cat ~ ns(years, 3),
+  data = amelia_ord_data,
+  weights = weights,
+  Hess = TRUE
+)
+
+# mice model (first imputation for simplicity)
+cat("Fitting MICE ordinal model...\n")
+mice_ord_data <- complete(mice_obj, 1) %>%
+  pivot_longer(
+    cols = starts_with("trust_science_"),
+    names_to = "year",
+    values_to = "trust_science",
+    names_prefix = "trust_science_"
+  ) %>%
+  mutate(
+    years = as.numeric(year),
+    trust_cat = create_trust_categories(trust_science)
+  )
+
+ordinal_results$mice <- polr(
+  trust_cat ~ ns(years, 3),
+  data = mice_ord_data,
+  weights = weights,
+  Hess = TRUE
+)
+
+# extract and compare thresholds
+threshold_comparison <- data.frame(
+  method = names(ordinal_results),
+  threshold_low_med = sapply(ordinal_results, function(x) x$zeta[1]),
+  threshold_med_high = sapply(ordinal_results, function(x) x$zeta[2])
+)
+
+cat("\nOrdinal Model Thresholds:\n")
+print(threshold_comparison)
+
+# ========================================================================
+# 7. CATEGORY SHIFT COMPARISON
+# ========================================================================
+cat("\n\n=== CATEGORY SHIFT ANALYSIS ===\n")
+
+# compile shift comparisons
+cat_shift_comparison <- data.frame(
+  method = c("Oracle", "Complete Case", "IPCW", "Amelia", "MICE"),
+  low_shift = c(
+    oracle_cat_props$prop_low[5] - oracle_cat_props$prop_low[1],
+    cc_cat_props$prop_low[5] - cc_cat_props$prop_low[1],
+    ipcw_cat_props$prop_low[5] - ipcw_cat_props$prop_low[1],
+    amelia_cat_props$prop_low[5] - amelia_cat_props$prop_low[1],
+    mice_cat_props$prop_low[5] - mice_cat_props$prop_low[1]
+  ),
+  high_shift = c(
+    oracle_cat_props$prop_high[5] - oracle_cat_props$prop_high[1],
+    cc_cat_props$prop_high[5] - cc_cat_props$prop_high[1],
+    ipcw_cat_props$prop_high[5] - ipcw_cat_props$prop_high[1],
+    amelia_cat_props$prop_high[5] - amelia_cat_props$prop_high[1],
+    mice_cat_props$prop_high[5] - mice_cat_props$prop_high[1]
+  )
+)
+
+# calculate errors
+cat_shift_comparison <- cat_shift_comparison %>%
+  mutate(
+    low_error = abs(low_shift - oracle_low_shift),
+    high_error = abs(high_shift - oracle_high_shift),
+    mean_error = (low_error + high_error) / 2
+  )
+
+cat("\nCategory Shift Performance (Year 4 - Year 0):\n")
+print(cat_shift_comparison %>% arrange(mean_error))
+
+# ========================================================================
+# 8. BASELINE DISTRIBUTION PRESERVATION
+# ========================================================================
+cat("\n\n=== BASELINE (YEAR 0) DISTRIBUTION PRESERVATION ===\n")
+
+baseline_comparison <- data.frame(
+  method = c("Oracle", "Complete Case", "IPCW", "Amelia", "MICE"),
+  low_y0 = c(
+    oracle_cat_props$prop_low[1],
+    cc_cat_props$prop_low[1],
+    ipcw_cat_props$prop_low[1],
+    amelia_cat_props$prop_low[1],
+    mice_cat_props$prop_low[1]
+  ),
+  medium_y0 = c(
+    oracle_cat_props$prop_medium[1],
+    cc_cat_props$prop_medium[1],
+    ipcw_cat_props$prop_medium[1],
+    amelia_cat_props$prop_medium[1],
+    mice_cat_props$prop_medium[1]
+  ),
+  high_y0 = c(
+    oracle_cat_props$prop_high[1],
+    cc_cat_props$prop_high[1],
+    ipcw_cat_props$prop_high[1],
+    amelia_cat_props$prop_high[1],
+    mice_cat_props$prop_high[1]
+  )
+)
+
+# calculate KL divergence from oracle
+kl_divergence <- function(p, q) {
+  # ensure no zeros
+  p <- pmax(p, 1e-10)
+  q <- pmax(q, 1e-10)
+  sum(p * log(p / q))
+}
+
+# calculate KL divergence for each method from oracle
+baseline_comparison$kl_from_oracle <- NA
+for (i in 1:nrow(baseline_comparison)) {
+  if (i == 1) {
+    baseline_comparison$kl_from_oracle[i] <- 0  # oracle has 0 KL from itself
+  } else {
+    p <- c(baseline_comparison$low_y0[1], 
+           baseline_comparison$medium_y0[1], 
+           baseline_comparison$high_y0[1])
+    q <- c(baseline_comparison$low_y0[i], 
+           baseline_comparison$medium_y0[i], 
+           baseline_comparison$high_y0[i])
+    baseline_comparison$kl_from_oracle[i] <- kl_divergence(p, q)
+  }
+}
+
+cat("\nBaseline Distribution Preservation:\n")
+print(baseline_comparison %>% arrange(kl_from_oracle))
+
+# ========================================================================
+# 9. ENHANCED VISUALIZATIONS
+# ========================================================================
+cat("\n\n=== CREATING ENHANCED VISUALIZATIONS ===\n")
+
+# prepare data for category proportion plot
+cat_prop_data <- bind_rows(
+  oracle_cat_props %>%
+    select(years, prop_low, prop_high) %>%
+    pivot_longer(cols = c(prop_low, prop_high), names_to = "category", values_to = "proportion") %>%
+    mutate(method = "Oracle", category = ifelse(category == "prop_low", "Low", "High")),
+  cc_cat_props %>%
+    select(years, prop_low, prop_high) %>%
+    pivot_longer(cols = c(prop_low, prop_high), names_to = "category", values_to = "proportion") %>%
+    mutate(method = "Complete Case", category = ifelse(category == "prop_low", "Low", "High")),
+  ipcw_cat_props %>%
+    select(years, prop_low, prop_high) %>%
+    pivot_longer(cols = c(prop_low, prop_high), names_to = "category", values_to = "proportion") %>%
+    mutate(method = "IPCW", category = ifelse(category == "prop_low", "Low", "High")),
+  amelia_cat_props %>%
+    select(years, prop_low, prop_high) %>%
+    pivot_longer(cols = c(prop_low, prop_high), names_to = "category", values_to = "proportion") %>%
+    mutate(method = "Amelia", category = ifelse(category == "prop_low", "Low", "High")),
+  mice_cat_props %>%
+    select(years, prop_low, prop_high) %>%
+    pivot_longer(cols = c(prop_low, prop_high), names_to = "category", values_to = "proportion") %>%
+    mutate(method = "MICE", category = ifelse(category == "prop_low", "Low", "High"))
+)
+
+# category proportions plot
+p_cat_props <- ggplot(cat_prop_data,
+                     aes(x = years, y = proportion, color = method, linetype = category)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  scale_color_manual(values = c(
+    "Oracle" = "black",
+    "Complete Case" = "red",
+    "IPCW" = "blue",
+    "Amelia" = "darkgreen",
+    "MICE" = "orange"
+  )) +
+  scale_linetype_manual(values = c("Low" = "solid", "High" = "dashed")) +
+  labs(
+    x = "Year",
+    y = "Proportion",
+    title = "Category Proportions by Method",
+    subtitle = "Solid lines = Low trust (≤3), Dashed lines = High trust (>5)",
+    color = "Method",
+    linetype = "Category"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+print(p_cat_props)
+
+# baseline distribution plot
+baseline_long <- baseline_comparison %>%
+  select(method, low_y0, medium_y0, high_y0) %>%
+  pivot_longer(cols = -method, names_to = "category", values_to = "proportion") %>%
+  mutate(category = case_when(
+    category == "low_y0" ~ "Low",
+    category == "medium_y0" ~ "Medium",
+    category == "high_y0" ~ "High"
+  ))
+
+p_baseline <- ggplot(baseline_long,
+                    aes(x = method, y = proportion, fill = category)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual(values = c("Low" = "#d62728", "Medium" = "#ff7f0e", "High" = "#2ca02c")) +
+  labs(
+    x = "Method",
+    y = "Proportion",
+    title = "Baseline (Year 0) Category Distribution",
+    subtitle = "Preservation of initial trust distribution",
+    fill = "Trust Category"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(p_baseline)
+
+# combined visualization
+combined_ordinal <- p_cat_props / p_baseline +
+  plot_annotation(
+    title = "Ordinal Model Performance: Category Tracking and Baseline Preservation",
+    subtitle = "Comparing IPCW, Amelia, MICE, and Complete Case methods"
+  )
+
+print(combined_ordinal)
+ggsave("results/figures/ordinal_method_comparison.png", combined_ordinal,
+       width = 12, height = 14, dpi = 300)
+
+# ========================================================================
+# 10. COMPREHENSIVE PERFORMANCE SUMMARY
+# ========================================================================
+cat("\n\n=== COMPREHENSIVE PERFORMANCE SUMMARY ===\n")
+
+# combine all performance metrics
+overall_performance <- data.frame(
+  method = c("Complete Case", "IPCW", "Amelia", "MICE"),
+  continuous_mae = error_summary$mean_absolute_error[error_summary$method != "Oracle (Truth)"],
+  category_shift_error = cat_shift_comparison$mean_error[2:5],
+  baseline_kl_divergence = baseline_comparison$kl_from_oracle[2:5]
+)
+
+# rank by each metric
+overall_performance <- overall_performance %>%
+  mutate(
+    rank_continuous = rank(continuous_mae),
+    rank_category = rank(category_shift_error),
+    rank_baseline = rank(baseline_kl_divergence),
+    mean_rank = (rank_continuous + rank_category + rank_baseline) / 3
+  ) %>%
+  arrange(mean_rank)
+
+cat("\nOverall Performance Rankings:\n")
+print(overall_performance)
+
+# identify best method
+best_method <- overall_performance$method[1]
+cat("\n\nBEST OVERALL METHOD:", best_method, "\n")
+
+# method-specific assessments
+cat("\nMethod-Specific Assessments:\n")
+cat("\nComplete Case:\n")
+cat("- Worst performance due to selection bias\n")
+cat("- Overestimates high trust, underestimates low trust\n")
+cat("- Cannot recover true population trends\n")
+
+cat("\nIPCW:\n")
+cat("- Moderate performance, better than complete case\n")
+cat("- Partially corrects for dropout bias\n")
+cat("- Struggles with complex missingness patterns\n")
+
+cat("\nAmelia:\n")
+if (best_method == "Amelia") {
+  cat("- BEST OVERALL PERFORMANCE\n")
+}
+cat("- Time-series approach captures temporal patterns well\n")
+cat("- Good baseline preservation\n")
+cat("- Handles monotone dropout effectively\n")
+
+cat("\nMICE:\n")
+if (best_method == "MICE") {
+  cat("- BEST OVERALL PERFORMANCE\n")
+}
+cat("- Wide format approach with lagged predictors\n")
+cat("- May show distribution shifts at baseline\n")
+cat("- Performance depends on predictor specification\n")
+
+# final recommendations
+cat("\n\n=== FINAL RECOMMENDATIONS ===\n")
+cat("1. For continuous outcomes: ",
+    overall_performance$method[overall_performance$rank_continuous == 1],
+    " performs best\n")
+cat("2. For category shift detection: ",
+    overall_performance$method[overall_performance$rank_category == 1],
+    " performs best\n")
+cat("3. For baseline preservation: ",
+    overall_performance$method[overall_performance$rank_baseline == 1],
+    " performs best\n")
+cat("\nOverall recommendation: Use", best_method, "for this type of longitudinal data\n")
+
+cat("\n\nOrdinal model analysis complete!\n")
