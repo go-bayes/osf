@@ -521,3 +521,6 @@ if (file.exists(oracle_path)) {
 }
 cat("\nNext step: Run 03_create_visualizations.R\n")
 
+
+# this is the key plot
+#comparison_plot

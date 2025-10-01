@@ -44,8 +44,8 @@ methods_text <- '
 ## Statistical Methods
 
 ### Data and Sample
-We analyzed longitudinal data from the New Zealand Attitudes and Values Study (NZAVS), 
-a national probability sample of adults. Our analysis included N = 42,681 participants 
+We analyzed longitudinal data from the New Zealand Attitudes and Values Study (NZAVS),
+a national probability sample of adults. Our analysis included N = 42,681 participants
 who were present at baseline (Wave 11, 2019-2020) and tracked through Wave 14 (2022-2024).
 
 ### Measures
@@ -72,7 +72,7 @@ Generalized Estimating Equations (GEE) with:
 - Post-stratification weights
 - Cluster-robust standard errors
 
-#### Categorical Outcomes  
+#### Categorical Outcomes
 Proportional odds models (MASS::polr) with:
 - Natural cubic splines (3 df) for time trends
 - Post-stratification weights
@@ -126,8 +126,8 @@ Without correcting for missing data:
 - Trust in scientists appeared {abs(key_findings$scientists_bias)} points more {ifelse(key_findings$scientists_bias > 0, "positive", "negative")}
 
 ### Interpretation
-Both attitudes showed initial increases during New Zealand\'s COVID-19 response but 
-subsequently declined below baseline levels. This erosion of trust was masked in 
+Both attitudes showed initial increases during New Zealand\'s COVID-19 response but
+subsequently declined below baseline levels. This erosion of trust was masked in
 complete case analysis due to selective attrition.
 ')
 
@@ -169,19 +169,19 @@ key_findings <- jsonlite::read_json(("results/key_findings.json"))
 
 # Executive Summary
 
-This report presents results from a longitudinal analysis of trust in science using 
-data from the New Zealand Attitudes and Values Study (NZAVS). We tracked 
-`r format(key_findings$n_total, big.mark = ",")` participants from 2019-2024, 
+This report presents results from a longitudinal analysis of trust in science using
+data from the New Zealand Attitudes and Values Study (NZAVS). We tracked
+`r format(key_findings$n_total, big.mark = ",")` participants from 2019-2024,
 spanning the COVID-19 pandemic period.
 
 ## Key Findings
 
-1. **Initial Rise**: Both social value of science and trust in scientists increased 
+1. **Initial Rise**: Both social value of science and trust in scientists increased
    during New Zealand\'s COVID-19 response (2020-2021)
-   
+
 2. **Subsequent Decline**: Both measures declined below baseline levels by 2022-2024
 
-3. **Attrition Bias**: Complete case analysis masked these declines, showing 
+3. **Attrition Bias**: Complete case analysis masked these declines, showing
    artificially stable or positive trends
 
 # Methods
@@ -209,39 +209,39 @@ estimates %>%
 
 # Discussion
 
-Our findings reveal a concerning pattern: while trust in science and scientists 
-initially rose during the COVID-19 pandemic response, both subsequently declined 
-below pre-pandemic levels. This erosion was masked by selective attrition in the 
+Our findings reveal a concerning pattern: while trust in science and scientists
+initially rose during the COVID-19 pandemic response, both subsequently declined
+below pre-pandemic levels. This erosion was masked by selective attrition in the
 longitudinal sample.
 
 ## Implications
 
-1. **Methodological**: Studies of institutional trust must account for non-random 
+1. **Methodological**: Studies of institutional trust must account for non-random
    attrition to avoid biased conclusions
-   
-2. **Substantive**: The decline in scientific trust post-COVID requires attention 
+
+2. **Substantive**: The decline in scientific trust post-COVID requires attention
    from science communicators and policymakers
 
-3. **Future Research**: Investigation of factors driving both the initial rise and 
+3. **Future Research**: Investigation of factors driving both the initial rise and
    subsequent fall in trust is warranted
 
 # Technical Details
 
 ## Missing Data Patterns
 
-Complete case analysis retained only `r format(key_findings$n_observed, big.mark = ",")` 
-observations, suggesting substantial attrition. Multiple imputation was essential 
+Complete case analysis retained only `r format(key_findings$n_observed, big.mark = ",")`
+observations, suggesting substantial attrition. Multiple imputation was essential
 for obtaining unbiased estimates.
 
 ## Model Diagnostics
 
-All models showed good fit with no evidence of specification issues. Natural cubic 
+All models showed good fit with no evidence of specification issues. Natural cubic
 splines adequately captured non-linear temporal trends.
 
 # Reproducibility
 
-This analysis is fully reproducible using the provided code and synthetic data. 
-Due to privacy constraints, the original NZAVS data cannot be shared publicly, but 
+This analysis is fully reproducible using the provided code and synthetic data.
+Due to privacy constraints, the original NZAVS data cannot be shared publicly, but
 synthetic data preserving key statistical properties is available.
 
 ## Running the Analysis
@@ -372,16 +372,16 @@ data_dict_content <- '# Data Dictionary
 - **trust_science**: "I have a high degree of confidence in the scientific community" (1-7)
   - 1 = Strongly Disagree
   - 7 = Strongly Agree
-  
+
 - **trust_scientists**: "Our society places too much emphasis on science" (1-7, reverse-coded)
   - 1 = Strongly Disagree (i.e., high trust)
   - 7 = Strongly Agree (i.e., low trust)
-  
+
 - **trust_science_factor**: Categorized trust in science
   - "low" = 1-3
   - "med" = 4-5
   - "high" = 6-7
-  
+
 - **trust_scientists_factor**: Categorized trust in scientists
   - "low" = 1-3
   - "med" = 4-5
@@ -429,7 +429,7 @@ cat("  - code/demo/run_demo.R\n")
 cat("\nTo run the demo:\n")
 cat("  source('code/demo/run_demo.R')\n")
 
-cat("\nTo view results:\n") 
+cat("\nTo view results:\n")
 cat("  - Main figure: results/figures/main_figure.png\n")
 cat("  - Key findings: results/key_findings.json\n")
 cat("  - Full report: documentation/analysis_report.html\n")

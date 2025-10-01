@@ -584,12 +584,12 @@ cat("Observed: Year 1 =", round(pred_observed$predicted[1], 3),
 # check who remains by year 5
 cat("\n\nWho remains by year 5:\n")
 year4_complete <- observed_complete %>%
-  filter(years == 4) %>%
+  dplyr::filter(years == 4) %>%
   group_by(trust_group) %>%
   summarise(n = n(), mean_trust = round(mean(trust_science), 2))
 
 year4_oracle <- oracle_data %>%
-  filter(years == 4) %>%
+  dplyr::filter(years == 4) %>%
   group_by(trust_group) %>%
   summarise(n_oracle = n())
 
@@ -614,8 +614,8 @@ cat("\n\nCategorical distribution of trust in science:\n")
 
 # baseline (year 1)
 cat("\nYear 1 (Baseline):\n")
-oracle_cat_y1 <- compute_cat_summary(oracle_data %>% filter(years == 0))
-observed_cat_y1 <- compute_cat_summary(observed_data %>% filter(years == 0))
+oracle_cat_y1 <- compute_cat_summary(oracle_data %>% dplyr::filter(years == 0))
+observed_cat_y1 <- compute_cat_summary(observed_data %>% dplyr::filter(years == 0))
 
 cat("Oracle:\n")
 print(table(oracle_cat_y1$trust_science_factor))
@@ -624,8 +624,8 @@ print(table(observed_cat_y1$trust_science_factor, useNA = "always"))
 
 # year 5
 cat("\n\nYear 5:\n")
-oracle_cat_y5 <- compute_cat_summary(oracle_data %>% filter(years == 4))
-observed_cat_y5 <- compute_cat_summary(observed_data %>% filter(years == 4))
+oracle_cat_y5 <- compute_cat_summary(oracle_data %>% dplyr::filter(years == 4))
+observed_cat_y5 <- compute_cat_summary(observed_data %>% dplyr::filter(years == 4))
 
 cat("Oracle:\n")
 print(table(oracle_cat_y5$trust_science_factor))
@@ -638,7 +638,7 @@ print(table(observed_cat_y5$trust_science_factor, useNA = "always"))
 cat("\n\n=== VERIFICATION CHECKS ===\n")
 
 # check baseline demographics
-baseline_data <- oracle_data %>% filter(years == 0)
+baseline_data <- oracle_data %>% dplyr::filter(years == 0)
 cat("\nBaseline Demographics (n =", nrow(baseline_data), "):\n")
 cat("\nGender distribution:\n")
 print(prop.table(table(baseline_data$gender)))

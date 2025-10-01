@@ -34,14 +34,14 @@ attrition_summary <- observed_data %>%
 
 # attrition plot
 p_attrition <- ggplot(attrition_summary,
-                     aes(x = years, y = prop_missing, 
+                     aes(x = years, y = prop_missing,
                          color = trust_group, group = trust_group)) +
   geom_line(size = 1.2) +
   geom_point(size = 3) +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
   scale_color_manual(values = c(
     "low" = "#e74c3c",
-    "medium" = "#f39c12", 
+    "medium" = "#f39c12",
     "high" = "#27ae60"
   )) +
   labs(
@@ -65,11 +65,11 @@ cat("\n=== IPCW WEIGHT DIAGNOSTICS ===\n")
 
 # weight distribution plot
 ipcw_weights <- dat_weighted %>%
-  filter(observed == 1, years > 0) %>%
-  select(years, id, ipcw, trust_group)
+  dplyr::filter(observed == 1, years > 0) %>%
+  dplyr::select(years, id, ipcw, trust_group)
 
 p_weights <- ggplot(ipcw_weights, aes(x = ipcw)) +
-  geom_histogram(aes(y = ..density..), bins = 50, 
+  geom_histogram(aes(y = ..density..), bins = 50,
                  fill = "#3498db", alpha = 0.7) +
   geom_density(color = "#2c3e50", size = 1) +
   facet_wrap(~years, scales = "free_y") +
@@ -98,7 +98,7 @@ weight_extremes <- ipcw_weights %>%
   )
 
 p_weight_groups <- ggplot(weight_extremes,
-                         aes(x = years, y = mean_weight, 
+                         aes(x = years, y = mean_weight,
                              color = trust_group, group = trust_group)) +
   geom_line(size = 1.2) +
   geom_point(size = 3) +
@@ -136,10 +136,10 @@ cat("\n=== BASELINE COVARIATE BALANCE ===\n")
 
 # calculate standardized differences
 baseline_balance <- observed_data %>%
-  filter(years == 0) %>%
+  dplyr::filter(years == 0) %>%
   mutate(
-    complete_y4 = id %in% (observed_data %>% 
-                          filter(years == 4, !is.na(trust_science)) %>% 
+    complete_y4 = id %in% (observed_data %>%
+                             dplyr::filter(years == 4, !is.na(trust_science)) %>%
                           pull(id))
   ) %>%
   group_by(complete_y4) %>%
@@ -158,13 +158,13 @@ baseline_balance <- observed_data %>%
 std_diff <- data.frame(
   variable = c("Age", "Education", "Female %", "Baseline Trust"),
   std_diff = c(
-    (baseline_balance$age_mean[2] - baseline_balance$age_mean[1]) / 
+    (baseline_balance$age_mean[2] - baseline_balance$age_mean[1]) /
       sqrt((baseline_balance$age_sd[1]^2 + baseline_balance$age_sd[2]^2) / 2),
-    (baseline_balance$education_mean[2] - baseline_balance$education_mean[1]) / 
+    (baseline_balance$education_mean[2] - baseline_balance$education_mean[1]) /
       sqrt((baseline_balance$education_sd[1]^2 + baseline_balance$education_sd[2]^2) / 2),
-    (baseline_balance$prop_female[2] - baseline_balance$prop_female[1]) / 
+    (baseline_balance$prop_female[2] - baseline_balance$prop_female[1]) /
       sqrt(baseline_balance$prop_female[1] * (1 - baseline_balance$prop_female[1])),
-    (baseline_balance$baseline_trust_mean[2] - baseline_balance$baseline_trust_mean[1]) / 
+    (baseline_balance$baseline_trust_mean[2] - baseline_balance$baseline_trust_mean[1]) /
       sqrt((baseline_balance$baseline_trust_sd[1]^2 + baseline_balance$baseline_trust_sd[2]^2) / 2)
   )
 )
@@ -210,7 +210,7 @@ method_predictions <- data.frame(
 cor_matrix <- cor(method_predictions[,-1])
 
 # correlation plot
-p_cor <- corrplot(cor_matrix, 
+p_cor <- corrplot(cor_matrix,
                   method = "color",
                   type = "upper",
                   order = "hclust",
@@ -231,23 +231,23 @@ threshold_long <- threshold_comparison %>%
   pivot_longer(cols = c(threshold_low_med, threshold_med_high),
                names_to = "threshold", values_to = "value") %>%
   mutate(
-    threshold = ifelse(threshold == "threshold_low_med", 
+    threshold = ifelse(threshold == "threshold_low_med",
                       "Low|Medium", "Medium|High"),
-    method = factor(method, levels = c("oracle", "complete_case", "ipcw", 
+    method = factor(method, levels = c("oracle", "complete_case", "ipcw",
                                       "amelia", "mice"))
   )
 
 p_thresholds <- ggplot(threshold_long,
                       aes(x = method, y = value, fill = threshold)) +
   geom_col(position = "dodge", alpha = 0.8) +
-  geom_hline(data = threshold_long %>% filter(method == "oracle"),
+  geom_hline(data = threshold_long %>% dplyr::filter(method == "oracle"),
              aes(yintercept = value, color = threshold),
              linetype = "dashed", size = 1) +
-  scale_fill_manual(values = c("Low|Medium" = "#e74c3c", 
+  scale_fill_manual(values = c("Low|Medium" = "#e74c3c",
                               "Medium|High" = "#27ae60")) +
-  scale_color_manual(values = c("Low|Medium" = "#e74c3c", 
+  scale_color_manual(values = c("Low|Medium" = "#e74c3c",
                                "Medium|High" = "#27ae60")) +
-  scale_x_discrete(labels = c("Oracle", "Complete\nCase", "IPCW", 
+  scale_x_discrete(labels = c("Oracle", "Complete\nCase", "IPCW",
                              "Amelia", "MICE")) +
   labs(
     x = "",
@@ -269,7 +269,7 @@ p_thresholds <- ggplot(threshold_long,
 # ========================================================================
 cat("\n=== CREATING COMPOSITE DIAGNOSTIC FIGURE ===\n")
 
-diagnostic_figure <- (p_attrition + p_balance) / 
+diagnostic_figure <- (p_attrition + p_balance) /
                     (p_weights + p_weight_groups) /
                     p_thresholds +
   plot_annotation(
@@ -292,8 +292,8 @@ attrition_table <- attrition_summary %>%
   mutate(
     percent_missing = paste0(round(prop_missing * 100, 1), "%")
   ) %>%
-  select(years, trust_group, n_total, n_missing, percent_missing) %>%
-  pivot_wider(names_from = trust_group, 
+  dplyr::select(years, trust_group, n_total, n_missing, percent_missing) %>%
+  pivot_wider(names_from = trust_group,
               values_from = c(n_total, n_missing, percent_missing)) %>%
   gt() %>%
   tab_header(
@@ -363,22 +363,22 @@ gtsave(weight_table, "results/tables/ipcw_weight_summary.html")
 diagnostic_summary <- paste0(
   "IPCW SIMULATION DIAGNOSTIC SUMMARY\n",
   "==================================\n\n",
-  
+
   "Attrition Patterns:\n",
   "- Low trust group: ", round(max(attrition_summary$prop_missing[attrition_summary$trust_group == "low"]) * 100, 1), "% missing by Year 4\n",
   "- Medium trust group: ", round(max(attrition_summary$prop_missing[attrition_summary$trust_group == "medium"]) * 100, 1), "% missing by Year 4\n",
   "- High trust group: ", round(max(attrition_summary$prop_missing[attrition_summary$trust_group == "high"]) * 100, 1), "% missing by Year 4\n\n",
-  
+
   "IPCW Weight Distribution:\n",
   "- Mean weight range: ", round(min(weight_extremes$mean_weight), 2), " to ", round(max(weight_extremes$mean_weight), 2), "\n",
   "- Maximum weight observed: ", round(max(weight_extremes$max_weight), 2), "\n",
   "- Weights increase over time as expected\n\n",
-  
+
   "Baseline Covariate Balance:\n",
   "- Large imbalance in baseline trust (std diff = ", round(std_diff$std_diff[4], 3), ")\n",
   "- Moderate imbalance in education (std diff = ", round(std_diff$std_diff[2], 3), ")\n",
   "- This confirms differential attrition by trust level\n\n",
-  
+
   "Ordinal Model Thresholds:\n",
   "- Complete Case shifts thresholds upward (selection bias)\n",
   "- IPCW partially corrects threshold bias\n",

@@ -53,7 +53,7 @@ wave_summary <- data.frame(
   Time_Point = 0:3,
   Description = c(
     "Baseline (pre-COVID)",
-    "COVID-19 response period", 
+    "COVID-19 response period",
     "Post-vaccination rollout",
     "Endemic phase"
   )
@@ -80,7 +80,7 @@ cat("\nCreating Table 2: Missing Data Patterns...\n")
 
 table2 <- kable(
   missing_summary %>%
-    select(Variable, Complete_N, Complete_Percent, Missing_N, Missing_Percent),
+    dplyr::select("Variable", "Complete_N", "Complete_Percent", "Missing_N", "Missing_Percent"),
   format = "html",
   caption = glue("Table 2. Missing Data Summary (N = {data_summary$n_total})"),
   col.names = c("Variable", "Complete (n)", "Complete (%)", "Missing (n)", "Missing (%)"),
@@ -101,10 +101,10 @@ cat("\nCreating Table 3: Model Estimates...\n")
 # function to extract key estimates
 extract_estimates <- function(predictions, model_type, outcome) {
   df <- as.data.frame(predictions)
-  
+
   # get estimates at each time point
   estimates <- df %>%
-    filter(x %in% 0:4) %>%
+    dplyr::filter(x %in% 0:4) %>%
     mutate(
       estimate_ci = glue("{round(predicted, 3)} [{round(conf.low, 3)}, {round(conf.high, 3)}]"),
       year_label = case_when(
@@ -115,11 +115,11 @@ extract_estimates <- function(predictions, model_type, outcome) {
         x == 4 ~ "2023"
       )
     ) %>%
-    select(year_label, estimate_ci)
-  
+    dplyr::select(year_label, estimate_ci)
+
   # calculate change (from 2019 to 2023)
   change <- round(df$predicted[df$x == 4] - df$predicted[df$x == 0], 3)
-  
+
   return(list(estimates = estimates, change = change))
 }
 
@@ -184,7 +184,7 @@ extract_model_params <- function(model, model_name) {
       # handle polr models manually
       coefs <- coef(model)
       se <- sqrt(diag(vcov(model)))
-      
+
       df <- data.frame(
         Model = model_name,
         Term = names(coefs),
@@ -195,7 +195,7 @@ extract_model_params <- function(model, model_name) {
     } else {
       # use parameters for other models
       params <- parameters::model_parameters(model, ci_method = "wald")
-      
+
       df <- data.frame(
         Model = model_name,
         Term = params$Parameter,
@@ -204,7 +204,7 @@ extract_model_params <- function(model, model_name) {
         stringsAsFactors = FALSE
       )
     }
-    
+
     return(df)
   }, error = function(e) {
     cat("  Warning: Could not extract parameters for", model_name, "\n")
@@ -236,7 +236,7 @@ if (length(params_list) > 0) {
   ) %>%
     kable_styling(full_width = TRUE, position = "left") %>%
     collapse_rows(columns = 1, valign = "top")
-  
+
   # save table 4
   cat(as.character(table4), file = ("results/tables/table4_coefficients.html"))
   cat("  ✓ Table 4 created\n")
@@ -255,16 +255,16 @@ cat("  - Creating Table S1: Categorical probabilities...\n")
 # extract categorical probabilities
 extract_cat_probs <- function(predictions, outcome_name, data_type) {
   df <- as.data.frame(predictions)
-  
+
   df %>%
-    filter(x %in% c(0, 4)) %>%
+    dplyr::filter(x %in% c(0, 4)) %>%
     mutate(
       prob_ci = glue("{round(predicted * 100, 1)}% [{round(conf.low * 100, 1)}, {round(conf.high * 100, 1)}]"),
       year_label = ifelse(x == 0, "2019", "2023"),
       outcome = outcome_name,
       data = data_type
     ) %>%
-    select(outcome, data, year_label, response.level, prob_ci)
+    dplyr::select(outcome, data, year_label, response.level, prob_ci)
 }
 
 cat_probs <- bind_rows(
@@ -297,13 +297,13 @@ cat("  ✓ Supplementary tables created\n")
 cat("\nSaving CSV versions of key tables...\n")
 
 # save key estimates as csv
-write.csv(estimates_wide, 
+write.csv(estimates_wide,
           ("results/tables/marginal_means_estimates.csv"),
           row.names = FALSE)
 
 # save model parameters as csv
 write.csv(all_params,
-          ("results/tables/model_coefficients.csv"), 
+          ("results/tables/model_coefficients.csv"),
           row.names = FALSE)
 
 # save categorical probabilities

@@ -354,12 +354,12 @@ cat("Observed: Year 1 =", round(pred_observed$predicted[1], 3),
 # check who remains by year 5
 cat("\n\nWho remains by year 5:\n")
 year4_complete <- observed_complete %>%
-  filter(years == 4) %>%
+  dplyr::filter(years == 4) %>%
   group_by(trust_group) %>%
   summarise(n = n(), mean_trust = round(mean(trust_science), 2), .groups = "drop")
 
 year4_oracle <- oracle_data %>%
-  filter(years == 4) %>%
+  dplyr::filter(years == 4) %>%
   group_by(trust_group) %>%
   summarise(n_oracle = n(), .groups = "drop")
 

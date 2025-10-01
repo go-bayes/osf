@@ -299,7 +299,7 @@ head(long_data)
 long_data<- long_data |> arrange(id, years)
 head(long_data)
 # id variables (removed from imputation model)
-amelia_data <- long_data |> select(-c( "trust_scientists_baseline", "trust_science_baseline", "missing", "trust_science_baseline",'trust_scientists_baseline', "science_slope", "scientists_slope", "wave"))
+amelia_data <- long_data |> dplyr::select(-c( "trust_scientists_baseline", "trust_science_baseline", "missing", "trust_science_baseline",'trust_scientists_baseline', "science_slope", "scientists_slope", "wave"))
 # REMOVE tscore, tscore_i
 id_vars <- c("id",  "years", "weights")
 

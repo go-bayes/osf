@@ -22,18 +22,27 @@ model_summaries <- readRDS(("results/model_outputs/model_summaries.rds"))
 data_summary <- model_summaries$data_info
 cat("  ✓ Results loaded\n\n")
 
+# view
+# predictions_all
+# model_summaries
+# data_summary
 # ========================================================================
 # EXTRACT KEY ESTIMATES
 # ========================================================================
 cat("Extracting key estimates...\n")
-
 # function to extract point estimates and changes
 extract_key_values <- function(predictions, outcome_name, data_type) {
+  # ggeffects objects can be accessed directly as data frames
+  # but we need to check the actual column names
   df <- as.data.frame(predictions)
-  
+
+  # check what columns we actually have
+  # ggeffects typically uses: x, predicted, std.error, conf.low, conf.high
+  # where 'x' is the predictor variable (in this case, years)
+
   # baseline (year 0)
   baseline <- df %>%
-    filter(years == 0) %>%
+    dplyr::filter(x == 0) %>%  # changed from 'years' to 'x'
     summarise(
       estimate = round(predicted, 3),
       ci_low = round(conf.low, 3),
@@ -44,10 +53,10 @@ extract_key_values <- function(predictions, outcome_name, data_type) {
       ci_string = glue("[{ci_low}, {ci_high}]"),
       year = "baseline"
     )
-  
-  # covid peak (year 1) 
+
+  # covid peak (year 1)
   covid_peak <- df %>%
-    filter(years == 1) %>%
+    dplyr::filter(x == 1) %>%  # changed from 'years' to 'x'
     summarise(
       estimate = round(predicted, 3),
       ci_low = round(conf.low, 3),
@@ -58,10 +67,10 @@ extract_key_values <- function(predictions, outcome_name, data_type) {
       ci_string = glue("[{ci_low}, {ci_high}]"),
       year = "covid_peak"
     )
-  
+
   # final (year 3)
   final <- df %>%
-    filter(years == 3) %>%
+    dplyr::filter(x == 3) %>%  # changed from 'years' to 'x'
     summarise(
       estimate = round(predicted, 3),
       ci_low = round(conf.low, 3),
@@ -72,12 +81,12 @@ extract_key_values <- function(predictions, outcome_name, data_type) {
       ci_string = glue("[{ci_low}, {ci_high}]"),
       year = "final"
     )
-  
+
   # changes
   change_baseline_to_peak <- round(covid_peak$estimate - baseline$estimate, 3)
   change_peak_to_final <- round(final$estimate - covid_peak$estimate, 3)
-  change_overall = round(final$estimate - baseline$estimate, 3)
-  
+  change_overall <- round(final$estimate - baseline$estimate, 3)
+
   # combine
   results <- list(
     outcome = outcome_name,
@@ -92,10 +101,15 @@ extract_key_values <- function(predictions, outcome_name, data_type) {
     change_from_peak = change_peak_to_final,
     change_overall = change_overall
   )
-  
+
   return(results)
 }
+# predictions_all$observed$gee_science
+# predictions_all$observed$gee_science
+# predictions_all$observed$gee_scientists
+# predictions_all$imputed$gee_scientists
 
+# extract for all models
 # extract for all models
 results_list <- list(
   science_observed = extract_key_values(
@@ -104,8 +118,8 @@ results_list <- list(
     "Observed"
   ),
   science_imputed = extract_key_values(
-    predictions_all$imputed$gee_science,
-    "Social Value of Science", 
+    predictions_all$imputed$gee_science,  # fixed: changed from observed to imputed
+    "Social Value of Science",
     "Imputed"
   ),
   scientists_observed = extract_key_values(
@@ -119,7 +133,6 @@ results_list <- list(
     "Imputed"
   )
 )
-
 cat("  ✓ Key estimates extracted\n")
 
 # ========================================================================
@@ -136,7 +149,7 @@ key_findings <- list(
   n_total = data_summary$n_total,
   n_observed = data_summary$n_observed,
   n_imputations = data_summary$n_imputations,
-  
+
   # science - imputed
   science_baseline = results_list$science_imputed$baseline,
   science_baseline_ci = results_list$science_imputed$baseline_ci,
@@ -147,7 +160,7 @@ key_findings <- list(
   science_rise = results_list$science_imputed$change_to_peak,
   science_fall = results_list$science_imputed$change_from_peak,
   science_overall = results_list$science_imputed$change_overall,
-  
+
   # scientists - imputed
   scientists_baseline = results_list$scientists_imputed$baseline,
   scientists_baseline_ci = results_list$scientists_imputed$baseline_ci,
@@ -158,10 +171,10 @@ key_findings <- list(
   scientists_rise = results_list$scientists_imputed$change_to_peak,
   scientists_fall = results_list$scientists_imputed$change_from_peak,
   scientists_overall = results_list$scientists_imputed$change_overall,
-  
+
   # bias comparison
   science_bias = round(
-    results_list$science_observed$change_overall - 
+    results_list$science_observed$change_overall -
     results_list$science_imputed$change_overall, 3
   ),
   scientists_bias = round(
@@ -206,20 +219,20 @@ cat("\nGenerating text snippets for manuscript...\n")
 text_snippets <- list(
   # abstract
   abstract_n = glue("N = {format(key_findings$n_total, big.mark = ',')}"),
-  
+
   # methods
   methods_sample = glue(
     "We analysed data from {format(key_findings$n_total, big.mark = ',')} ",
     "participants in the New Zealand Attitudes and Values Study (NZAVS) ",
     "who were present at baseline (2019-2020)."
   ),
-  
+
   methods_missing = glue(
     "Complete case analysis included {format(key_findings$n_observed, big.mark = ',')} ",
     "observations. We used multiple imputation with {key_findings$n_imputations} ",
     "imputations to address missing data."
   ),
-  
+
   # results - science
   results_science = glue(
     "After correcting for attrition bias, the social value of science ",
@@ -230,7 +243,7 @@ text_snippets <- list(
     "{key_findings$science_final_ci}, representing an overall change of ",
     "{key_findings$science_overall} points from baseline."
   ),
-  
+
   # results - scientists
   results_scientists = glue(
     "Similarly, trust in scientists rose from {key_findings$scientists_baseline} ",
@@ -241,7 +254,7 @@ text_snippets <- list(
     "by the study's end, yielding an overall change of ",
     "{key_findings$scientists_overall} points."
   ),
-  
+
   # results - bias
   results_bias = glue(
     "Complete case analysis masked these declines. Without correcting for attrition, ",
@@ -294,3 +307,4 @@ cat("  - key_findings.json: All key values in JSON format\n")
 cat("  - results_summary.csv: Detailed results table\n")
 cat("  - manuscript_text_snippets.txt: Pre-written text for manuscript\n")
 cat("\nNext step: Run 06_generate_report.R\n")
+

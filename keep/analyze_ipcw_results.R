@@ -110,23 +110,23 @@ cat("\n=== CATEGORICAL OUTCOME ANALYSIS ===\n")
 # enhanced category proportion plot
 cat_prop_long <- bind_rows(
   oracle_cat_props %>%
-    select(years, Low = prop_low, Medium = prop_medium, High = prop_high) %>%
+    dplyr::select(years, Low = prop_low, Medium = prop_medium, High = prop_high) %>%
     pivot_longer(cols = -years, names_to = "category", values_to = "proportion") %>%
     mutate(method = "Oracle"),
   cc_cat_props %>%
-    select(years, Low = prop_low, Medium = prop_medium, High = prop_high) %>%
+    dplyr::select(years, Low = prop_low, Medium = prop_medium, High = prop_high) %>%
     pivot_longer(cols = -years, names_to = "category", values_to = "proportion") %>%
     mutate(method = "Complete Case"),
   ipcw_cat_props %>%
-    select(years, Low = prop_low, Medium = prop_medium, High = prop_high) %>%
+    dplyr::select(years, Low = prop_low, Medium = prop_medium, High = prop_high) %>%
     pivot_longer(cols = -years, names_to = "category", values_to = "proportion") %>%
     mutate(method = "IPCW"),
   amelia_cat_props %>%
-    select(years, Low = prop_low, Medium = prop_medium, High = prop_high) %>%
+    dplyr::select(years, Low = prop_low, Medium = prop_medium, High = prop_high) %>%
     pivot_longer(cols = -years, names_to = "category", values_to = "proportion") %>%
     mutate(method = "Amelia"),
   mice_cat_props %>%
-    select(years, Low = prop_low, Medium = prop_medium, High = prop_high) %>%
+    dplyr::select(years, Low = prop_low, Medium = prop_medium, High = prop_high) %>%
     pivot_longer(cols = -years, names_to = "category", values_to = "proportion") %>%
     mutate(method = "MICE")
 ) %>%
@@ -164,7 +164,7 @@ p_categories <- ggplot(cat_prop_long,
 
 # diverging bar chart for category shifts
 shift_data <- cat_shift_comparison %>%
-  select(method, low_shift, high_shift) %>%
+  dplyr::select(method, low_shift, high_shift) %>%
   pivot_longer(cols = c(low_shift, high_shift),
                names_to = "category", values_to = "shift") %>%
   mutate(
@@ -246,7 +246,7 @@ categorical_table <- cat_shift_comparison %>%
 
 # overall performance table
 overall_table <- overall_performance %>%
-  select(method, continuous_mae, category_shift_error, baseline_kl_divergence, mean_rank) %>%
+  dplyr::select(method, continuous_mae, category_shift_error, baseline_kl_divergence, mean_rank) %>%
   mutate(across(where(is.numeric), ~round(., 4))) %>%
   gt() %>%
   tab_header(

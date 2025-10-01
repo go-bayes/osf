@@ -215,7 +215,7 @@ observed_data <- long_data %>%
 cat("\n\n=== METHOD 1: COMPLETE CASE ANALYSIS ===\n")
 
 complete_case_means <- observed_data %>%
-  filter(!is.na(trust_science)) %>%
+  dplyr::filter(!is.na(trust_science)) %>%
   group_by(years) %>%
   summarise(
     mean_trust_science = weighted.mean(trust_science, weights),
@@ -246,11 +246,11 @@ dat_ipcw <- observed_data %>%
 
 # model dropout probability for those at risk
 dat_at_risk <- dat_ipcw %>%
-  filter(at_risk == 1 & years > 0)
+  dplyr::filter(at_risk == 1 & years > 0)
 
 # merge baseline values
 baseline_data <- dat_ipcw %>%
-  filter(years == 0) %>%
+  dplyr::filter(years == 0) %>%
   dplyr::select(id, age_baseline, gender, education) %>%
   rename(
     age_b = age_baseline,
@@ -309,7 +309,7 @@ dat_weighted <- dat_ipcw %>%
 
 # calculate IPCW-weighted means
 ipcw_means <- dat_weighted %>%
-  filter(observed == 1) %>%
+  dplyr::filter(observed == 1) %>%
   mutate(combined_weight = ipcw * weights) %>%
   group_by(years) %>%
   summarise(
@@ -432,7 +432,7 @@ comparison_data <- bind_rows(
 
 # calculate absolute and relative errors
 error_summary <- comparison_data %>%
-  filter(method != "Oracle (Truth)") %>%
+  dplyr::filter(method != "Oracle (Truth)") %>%
   left_join(
     oracle_means %>% dplyr::select(years, oracle_mean = mean_trust_science),
     by = "years"
@@ -490,7 +490,7 @@ print(comparison_plot)
 
 # bias plot
 bias_data <- comparison_data %>%
-  filter(method != "Oracle (Truth)") %>%
+  dplyr::filter(method != "Oracle (Truth)") %>%
   left_join(
     oracle_means %>% dplyr::select(years, oracle_mean = mean_trust_science),
     by = "years"
@@ -559,7 +559,7 @@ cat("- All methods struggle in later years when attrition is highest\n")
 # final assessment
 cat("\n\n=== FINAL ASSESSMENT ===\n")
 cat("IPCW Performance:\n")
-ipcw_performance <- error_summary %>% filter(method == "IPCW")
+ipcw_performance <- error_summary %>% dplyr::filter(method == "IPCW")
 cat("- Mean Absolute Error:", round(ipcw_performance$mean_absolute_error, 4), "\n")
 cat("- Mean Relative Error:", round(ipcw_performance$mean_relative_error, 2), "%\n")
 cat("- Mean Bias:", round(ipcw_performance$mean_bias, 4), "\n")
@@ -628,7 +628,7 @@ cat("- High category:", round(oracle_high_shift, 3), "\n")
 cat("\n2. Complete Case Category Proportions:\n")
 
 cc_cat_props <- observed_data %>%
-  filter(!is.na(trust_science)) %>%
+  dplyr::filter(!is.na(trust_science)) %>%
   mutate(trust_cat = create_trust_categories(trust_science)) %>%
   group_by(years) %>%
   summarise(
@@ -740,7 +740,7 @@ oracle_ord_data <- oracle_data %>%
   mutate(trust_cat = create_trust_categories(trust_science))
 
 cc_ord_data <- observed_data %>%
-  filter(!is.na(trust_science)) %>%
+  dplyr::filter(!is.na(trust_science)) %>%
   mutate(trust_cat = create_trust_categories(trust_science))
 
 # fit ordinal models
@@ -767,7 +767,7 @@ ordinal_results$complete_case <- polr(
 # ipcw model
 cat("Fitting IPCW ordinal model...\n")
 ipcw_ord_data <- dat_weighted %>%
-  filter(observed == 1) %>%
+  dplyr::filter(observed == 1) %>%
   mutate(
     trust_cat = create_trust_categories(trust_science),
     combined_weight = ipcw * weights
@@ -902,11 +902,11 @@ for (i in 1:nrow(baseline_comparison)) {
   if (i == 1) {
     baseline_comparison$kl_from_oracle[i] <- 0  # oracle has 0 KL from itself
   } else {
-    p <- c(baseline_comparison$low_y0[1], 
-           baseline_comparison$medium_y0[1], 
+    p <- c(baseline_comparison$low_y0[1],
+           baseline_comparison$medium_y0[1],
            baseline_comparison$high_y0[1])
-    q <- c(baseline_comparison$low_y0[i], 
-           baseline_comparison$medium_y0[i], 
+    q <- c(baseline_comparison$low_y0[i],
+           baseline_comparison$medium_y0[i],
            baseline_comparison$high_y0[i])
     baseline_comparison$kl_from_oracle[i] <- kl_divergence(p, q)
   }

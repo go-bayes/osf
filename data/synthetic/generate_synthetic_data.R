@@ -362,3 +362,4 @@ if (interactive()) {
   cat("\nFirst 10 rows:\n")
   print(head(synthetic_data, 10))
 }
+

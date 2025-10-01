@@ -54,7 +54,7 @@ gee_plot_trust_science_observed <- plot(
     y = "Trust in Science (1-7)",
     title = "Average Trust in Science (Observed)"
   ) +
-  theme_bw()
+  theme_bw() + scale_y_continuous(limits = (c(0,7)))
 
 print(gee_plot_trust_science_observed)
 
@@ -81,7 +81,7 @@ gee_plot_trust_science_imputed <- plot(
     y = "Trust in Science (1-7)",
     title = "Average Trust in Science (Imputed)"
   ) +
-  theme_bw()
+  theme_bw() + scale_y_continuous(limits = (c(0,7)))
 
 print(gee_plot_trust_science_imputed)
 
@@ -110,7 +110,7 @@ gee_plot_trust_scientists_observed <- plot(
     y = "Trust in Scientists (1-7)",
     title = "Average Trust in Scientists (Observed)"
   ) +
-  theme_bw()
+  theme_bw()   + scale_y_continuous(limits = (c(0,7)))
 
 print(gee_plot_trust_scientists_observed)
 
@@ -135,9 +135,9 @@ gee_plot_trust_scientists_imputed <- plot(
     y = "Trust in Scientists (1-7)",
     title = "Average Trust in Scientists (Imputed)"
   ) +
-  theme_bw()
+  theme_bw() + scale_y_continuous(limits = (c(0,7)))
 
-print(gee_plot_trust_scientists_imputed)
+print(gee_plot_trust_scientists_imputed) + scale_y_continuous(limits = (c(0,7)))
 
 # combined plot for continuous outcomes
 cat("\nCreating combined continuous plot...\n")
@@ -147,7 +147,7 @@ combined_continuous_plot <-
   plot_annotation(
     title = "Trust in Science and Scientists: Continuous Outcomes",
     subtitle = glue("GEE models with natural splines (N = {N_PARTICIPANTS})")
-  )
+  )  + scale_y_continuous(limits = (c(0,7)))
 
 print(combined_continuous_plot)
 cat("  ✓ Combined continuous plot created\n")
@@ -191,7 +191,7 @@ cat_plot_trust_science_imputed <- plot(
     y = "Predicted Probability",
     title = "Level of Trust in Science (Imputed)"
   ) +
-  theme_bw()
+  theme_bw() + scale_y_continuous(limits = (c(0,7)))
 
 print(cat_plot_trust_science_imputed)
 
@@ -210,7 +210,7 @@ cat_plot_trust_scientists_observed <- plot(
     y = "Predicted Probability",
     title = "Level of Trust in Scientists (Observed)"
   ) +
-  theme_bw()
+  theme_bw() + scale_y_continuous(limits = (c(0,7)))
 
 print(cat_plot_trust_scientists_observed)
 
@@ -229,7 +229,7 @@ cat_plot_trust_scientists_imputed <- plot(
     y = "Predicted Probability",
     title = "Level of Trust in Scientists (Imputed)"
   ) +
-  theme_bw()
+  theme_bw() + scale_y_continuous(limits = (c(0,7)))
 
 print(cat_plot_trust_scientists_imputed)
 
@@ -241,7 +241,7 @@ combined_categorical_plot <-
   plot_annotation(
     title = "Trust in Science and Scientists: Categorical Outcomes",
     subtitle = glue("Proportional odds models with {N_IMPUTATIONS} imputations")
-  )
+  )  + scale_y_continuous(limits = (c(0,7)))
 
 print(combined_categorical_plot)
 cat("  ✓ Combined categorical plot created\n")
@@ -395,3 +395,4 @@ cat("  - combined_categorical.png/pdf: All categorical outcome plots\n")
 cat("  - Individual plots for each outcome and data type\n")
 cat("\nNote: Categorical plots contain facets for response levels (low/med/high)\n")
 cat("\nNext step: Run 04_generate_tables.R\n")
+

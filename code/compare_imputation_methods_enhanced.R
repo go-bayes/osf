@@ -68,7 +68,7 @@ print(oracle_cat_props)
 # ========================================================================
 
 cc_cat_props <- observed_data %>%
-  filter(!is.na(trust_science)) %>%
+  dplyr::filter(!is.na(trust_science)) %>%
   mutate(trust_cat = create_trust_categories(trust_science)) %>%
   group_by(years) %>%
   summarise(
@@ -87,7 +87,7 @@ cat("\n\nRunning MICE with", n_imputations, "imputations...\n")
 
 # create wide format
 wide_data <- observed_data %>%
-  dplyr::select(id, years, trust_science, trust_scientists, 
+  dplyr::select(id, years, trust_science, trust_scientists,
                 age_baseline, gender, education, weights) %>%
   pivot_wider(
     id_cols = c(id, age_baseline, gender, education, weights),
@@ -194,7 +194,7 @@ amelia_cat_props <- bind_rows(amelia_cat_props_list, .id = "imp") %>%
 # ========================================================================
 
 ipcw_cat_props <- dat_weighted %>%
-  filter(observed == 1) %>%
+  dplyr::filter(observed == 1) %>%
   mutate(
     trust_cat = create_trust_categories(trust_science),
     combined_weight = ipcw * weights
@@ -218,7 +218,7 @@ oracle_ord_data <- oracle_data %>%
   mutate(trust_cat = create_trust_categories(trust_science))
 
 cc_ord_data <- observed_data %>%
-  filter(!is.na(trust_science)) %>%
+  dplyr::filter(!is.na(trust_science)) %>%
   mutate(trust_cat = create_trust_categories(trust_science))
 
 # fit ordinal models
@@ -323,7 +323,7 @@ cat_prop_data <- bind_rows(
   ipcw_cat_props %>% mutate(method = "IPCW", category = "High", proportion = high)
 )
 
-p_cat <- ggplot(cat_prop_data, 
+p_cat <- ggplot(cat_prop_data,
                 aes(x = years, y = proportion, color = method, linetype = category)) +
   geom_line(size = 1.2) +
   geom_point(size = 2) +
