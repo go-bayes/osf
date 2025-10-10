@@ -547,7 +547,7 @@ print(year_by_year)
 
 # rank methods by performance
 cat("\n\nMETHOD RANKING (by mean absolute error):\n")
-print(error_summary %>% select(method, mean_absolute_error))
+print(error_summary %>% dplyr::select(method, mean_absolute_error))
 
 cat("\n\nKEY FINDINGS:\n")
 best_method <- error_summary$method[1]
@@ -613,7 +613,7 @@ oracle_cat_props <- oracle_data %>%
     .groups = "drop"
   )
 
-print(oracle_cat_props %>% select(years, prop_low, prop_medium, prop_high))
+print(oracle_cat_props %>% dplyr::select(years, prop_low, prop_medium, prop_high))
 
 # calculate shifts
 oracle_low_shift <- oracle_cat_props$prop_low[5] - oracle_cat_props$prop_low[1]
@@ -639,7 +639,7 @@ cc_cat_props <- observed_data %>%
     .groups = "drop"
   )
 
-print(cc_cat_props %>% select(years, prop_low, prop_medium, prop_high))
+print(cc_cat_props %>% dplyr::select(years, prop_low, prop_medium, prop_high))
 
 # ========================================================================
 # 3. IPCW CATEGORY PROPORTIONS
@@ -661,7 +661,7 @@ ipcw_cat_props <- dat_weighted %>%
     .groups = "drop"
   )
 
-print(ipcw_cat_props %>% select(years, prop_low, prop_medium, prop_high))
+print(ipcw_cat_props %>% dplyr::select(years, prop_low, prop_medium, prop_high))
 
 # ========================================================================
 # 4. AMELIA CATEGORY PROPORTIONS
@@ -689,7 +689,7 @@ amelia_cat_props <- bind_rows(amelia_cat_props_list, .id = "imp") %>%
     .groups = "drop"
   )
 
-print(amelia_cat_props %>% select(years, prop_low, prop_medium, prop_high))
+print(amelia_cat_props %>% dplyr::select(years, prop_low, prop_medium, prop_high))
 
 # ========================================================================
 # 5. MICE CATEGORY PROPORTIONS
@@ -726,7 +726,7 @@ mice_cat_props <- bind_rows(mice_cat_props_list, .id = "imp") %>%
     .groups = "drop"
   )
 
-print(mice_cat_props %>% select(years, prop_low, prop_medium, prop_high))
+print(mice_cat_props %>% dplyr::select(years, prop_low, prop_medium, prop_high))
 
 # ========================================================================
 # 6. FIT ORDINAL MODELS (POLR)
@@ -935,11 +935,11 @@ cat_prop_data <- bind_rows(
     pivot_longer(cols = c(prop_low, prop_high), names_to = "category", values_to = "proportion") %>%
     mutate(method = "IPCW", category = ifelse(category == "prop_low", "Low", "High")),
   amelia_cat_props %>%
-    select(years, prop_low, prop_high) %>%
+    dplyr::select(years, prop_low, prop_high) %>%
     pivot_longer(cols = c(prop_low, prop_high), names_to = "category", values_to = "proportion") %>%
     mutate(method = "Amelia", category = ifelse(category == "prop_low", "Low", "High")),
   mice_cat_props %>%
-    select(years, prop_low, prop_high) %>%
+    dplyr::select(years, prop_low, prop_high) %>%
     pivot_longer(cols = c(prop_low, prop_high), names_to = "category", values_to = "proportion") %>%
     mutate(method = "MICE", category = ifelse(category == "prop_low", "Low", "High"))
 )
@@ -972,7 +972,7 @@ print(p_cat_props)
 
 # baseline distribution plot
 baseline_long <- baseline_comparison %>%
-  select(method, low_y0, medium_y0, high_y0) %>%
+  dplyr::select(method, low_y0, medium_y0, high_y0) %>%
   pivot_longer(cols = -method, names_to = "category", values_to = "proportion") %>%
   mutate(category = case_when(
     category == "low_y0" ~ "Low",

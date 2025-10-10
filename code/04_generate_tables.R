@@ -327,3 +327,4 @@ cat("\nKey findings:\n")
 cat("  - Social Value of Science:", science_imp_cont$change, "point change (imputed data)\n")
 cat("  - Trust in Scientists:", scientists_imp_cont$change, "point change (imputed data)\n")
 cat("\nNext step: Run 05_extract_results.R\n")
+

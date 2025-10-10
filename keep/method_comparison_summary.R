@@ -9,7 +9,7 @@ library(patchwork)
 # Create summary data frame
 method_summary <- data.frame(
   Method = c("Complete Case", "MICE", "Amelia", "IPCW", "Delta Adjustment"),
-  
+
   Assumptions = c(
     "MCAR (Missing Completely At Random)",
     "MAR (Missing At Random)",
@@ -17,7 +17,7 @@ method_summary <- data.frame(
     "Dropout mechanism can be modeled",
     "MNAR with sensitivity analysis"
   ),
-  
+
   Strengths = c(
     "Simple, unbiased if MCAR holds",
     "Flexible, handles complex patterns",
@@ -25,7 +25,7 @@ method_summary <- data.frame(
     "Direct modeling of dropout",
     "Acknowledges uncertainty"
   ),
-  
+
   Weaknesses = c(
     "Biased if dropout is informative",
     "May miss group-specific trends",
@@ -33,7 +33,7 @@ method_summary <- data.frame(
     "Requires correct dropout model",
     "Results depend on δ values"
   ),
-  
+
   Best_When = c(
     "Minimal missing data (<5%)",
     "Homogeneous trajectories",
@@ -41,7 +41,7 @@ method_summary <- data.frame(
     "Dropout mechanism understood",
     "Need sensitivity analysis"
   ),
-  
+
   Performance_Score = c(1, 4, 5, 3, 3)
 )
 
@@ -93,7 +93,7 @@ arrow_data <- data.frame(
 )
 
 p2 <- ggplot(decision_data, aes(x = x, y = y)) +
-  geom_segment(data = arrow_data, 
+  geom_segment(data = arrow_data,
                aes(x = x, xend = xend, y = y, yend = yend),
                arrow = arrow(length = unit(0.3, "cm")),
                size = 1) +
@@ -104,7 +104,7 @@ p2 <- ggplot(decision_data, aes(x = x, y = y)) +
   geom_text(aes(label = label), size = 3, lineheight = 0.8) +
   scale_color_manual(values = c(
     "start" = "black",
-    "decision" = "orange", 
+    "decision" = "orange",
     "method" = "darkgreen"
   )) +
   xlim(-4, 4) + ylim(1, 5) +
@@ -114,7 +114,7 @@ p2 <- ggplot(decision_data, aes(x = x, y = y)) +
 
 # Create summary table using gt
 summary_table <- method_summary %>%
-  select(Method, Assumptions, Best_When, Performance_Score) %>%
+  dplyr::select(Method, Assumptions, Best_When, Performance_Score) %>%
   gt() %>%
   tab_header(
     title = "When to Use Each Missing Data Method",
