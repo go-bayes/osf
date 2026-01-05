@@ -15,6 +15,18 @@
 - **Dropout calibration** now targets group retention with overall attrition tuning.
 - **Medium trust stability** enforced by removing medium-group measurement noise.
 - **MICE comparison** now uses a real wide-format imputation instead of Amelia-converted mids objects.
+- **Observed-by-group diagnostics** now compute proportions correctly within each group-year.
+- **IPCW plotting** now aligns baseline to the oracle mean for direct comparison.
+- **Simplified baseline trust generation** with group-based ranges to ensure low and high categories exist.
+- **Dropout mechanism simplified** to per-wave group-specific hazards matching final retention targets.
+- **Baseline measurement noise removed** so all methods align at year 0 without post-hoc adjustment.
+- **IPCW model aligned** to baseline trust group and time only, consistent with the dropout mechanism.
+- **GEE trajectories** now use `factor(years)` to match per-wave means and avoid spline artefacts.
+- **Post-stratification weights fixed at 1** to isolate attrition effects in the simplified run.
+- **Continuous recovery** now reports per-year weighted means for Oracle, Observed, IPCW, Amelia, and MICE, with a dedicated mean-comparison plot.
+- **Category proportion plot** now facets by trust category for clearer method comparison.
+- **Observed-by-group diagnostics** now exclude missing categories so proportions are conditional on observation.
+- **Baseline trust group mix** now set to high-majority (high 0.60, medium 0.30, low 0.10).
 
 ### Deprecated
 - `_delete_me.R` is now blocked from execution in favour of the canonical script.

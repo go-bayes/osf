@@ -1,10 +1,10 @@
-# test_3_improved.R - Improved simulation with correlated baselines and current-trust dropout
+# test_3_improved.R - simplified simulation with baseline trust dropout
 # joseph.bulbulia@gmail.com
 
 # setup
 set.seed(2025)
 library(tidyverse)
-library(MASS) # for mvrnorm
+library(MASS) # for polr
 library(splines)
 library(ggeffects)
 library(geepack)
@@ -71,59 +71,29 @@ participants <- data.frame(
   )
 )
 
-# create trust groups based on education
-participants$trust_group <- case_when(
-  participants$education <= 2 ~ "low",
-  participants$education <= 5 ~ "medium",
-  participants$education >= 6 ~ "high"
+# assign trust groups for simulation
+group_probs <- c(low = 0.1, medium = 0.3, high = 0.6)
+participants$trust_group <- sample(
+  names(group_probs),
+  n_participants,
+  replace = TRUE,
+  prob = group_probs
 )
 
-# generate baseline trust from demographic predictors
-cat("\nGenerating baseline trust from demographic predictors...\n")
-
-# create demographic predictors for trust
-participants <- participants %>%
+# generate baseline trust from group membership
+cat("\nGenerating baseline trust from group membership...\n")
+participants <- participants |>
   mutate(
-    # calculate mean trust from demographics
-    trust_science_mean = 4.0 +
-      0.3 * education +
-      0.01 * (age_baseline - 50) +
-      0.2 * (gender == "Female") +
-      -0.3 * (ethnicity == "Maori") +
-      -0.2 * (ethnicity == "Pacific") +
-      0.1 * (ethnicity == "Asian"),
-    # trust in scientists slightly lower overall but same predictors
-    trust_scientists_mean = 3.8 +
-      0.3 * education +
-      0.01 * (age_baseline - 50) +
-      0.2 * (gender == "Female") +
-      -0.3 * (ethnicity == "Maori") +
-      -0.2 * (ethnicity == "Pacific") +
-      0.1 * (ethnicity == "Asian")
-  )
-
-# generate correlated baseline trust scores
-# correlation matrix (r = 0.7 - higher correlation)
-Sigma <- matrix(c(
-  0.5^2, 0.5 * 0.5 * 0.7,
-  0.5 * 0.5 * 0.7, 0.5^2
-), 2, 2)
-
-# generate for each participant
-trust_baselines <- matrix(NA, n_participants, 2)
-for (i in 1:n_participants) {
-  trust_baselines[i, ] <- mvrnorm(1,
-    mu = c(
-      participants$trust_science_mean[i],
-      participants$trust_scientists_mean[i]
+    trust_science_baseline = case_when(
+      trust_group == "low" ~ runif(n(), 1, 3),
+      trust_group == "medium" ~ runif(n(), 3.1, 5.9),
+      trust_group == "high" ~ runif(n(), 6, 7)
     ),
-    Sigma = Sigma
+    trust_scientists_baseline = pmin(
+      7,
+      pmax(1, trust_science_baseline + rnorm(n(), 0, 0.3))
+    )
   )
-}
-
-# assign and bound to 1-7 scale
-participants$trust_science_baseline <- pmax(1, pmin(7, trust_baselines[, 1]))
-participants$trust_scientists_baseline <- pmax(1, pmin(7, trust_baselines[, 2]))
 
 # check correlation
 cat(
@@ -141,12 +111,7 @@ aggregate(trust_science_baseline ~ trust_group,
   function(x) round(c(mean = mean(x), n = length(x)), 2)
 )
 
-# check demographic effects
-cat("\nDemographic effects on trust:\n")
-demo_model <- lm(trust_science_baseline ~ education + age_baseline + gender + ethnicity,
-  data = participants
-)
-print(round(coef(demo_model), 3))
+# trust groups and baseline scores now drive the attrition mechanism
 
 # create long format data
 cat("\nCreating longitudinal structure...\n")
@@ -164,7 +129,7 @@ long_data$wave <- factor(baseline_year + long_data$years,
   levels = baseline_year:(baseline_year + n_waves - 1)
 )
 
-# generate trust trajectories using LINEAR SLOPES
+# generate trust trajectories using linear slopes
 cat("Generating trust outcomes with linear slopes...\n")
 
 # define slopes for each group - moderate for realistic patterns
@@ -175,11 +140,11 @@ long_data <- long_data %>%
     # trust in science with linear trend
     trust_science = trust_science_baseline +
       slopes[trust_group] * years +
-      ifelse(trust_group == "medium", 0, rnorm(n(), 0, 0.10)), # keep medium stable
+      if_else(years == 0, 0, rnorm(n(), 0, 0.15)),
     # trust in scientists with similar linear trend
     trust_scientists = trust_scientists_baseline +
       slopes[trust_group] * years +
-      ifelse(trust_group == "medium", 0, rnorm(n(), 0, 0.10)) # keep medium stable
+      if_else(years == 0, 0, rnorm(n(), 0, 0.15))
   ) |>
   # bound to 1-7 scale
   mutate(across(
@@ -189,135 +154,52 @@ long_data <- long_data %>%
 
 # add post-stratification weights (before missingness)
 cat("\nAdding post-stratification weights...\n")
-
-# realistic post-stratification weights to correct for NZAVS sampling design
 long_data$weights <- 1
-
-# age effects
-long_data$weights[long_data$age_baseline < 35] <- long_data$weights[long_data$age_baseline < 35] * 1.15
-long_data$weights[long_data$age_baseline >= 35 & long_data$age_baseline < 45] <- long_data$weights[long_data$age_baseline >= 35 & long_data$age_baseline < 45] * 1.05
-long_data$weights[long_data$age_baseline >= 55] <- long_data$weights[long_data$age_baseline >= 55] * 0.85
-
-# gender effects
-long_data$weights[long_data$gender == "Female"] <- long_data$weights[long_data$gender == "Female"] * 0.90
-long_data$weights[long_data$gender == "Male"] <- long_data$weights[long_data$gender == "Male"] * 1.10
-
-# ethnicity effects
-long_data$weights[long_data$ethnicity == "Maori"] <- long_data$weights[long_data$ethnicity == "Maori"] * 0.95
-long_data$weights[long_data$ethnicity == "Pacific"] <- long_data$weights[long_data$ethnicity == "Pacific"] * 1.20
-long_data$weights[long_data$ethnicity == "Asian"] <- long_data$weights[long_data$ethnicity == "Asian"] * 1.15
-long_data$weights[long_data$ethnicity == "Other"] <- long_data$weights[long_data$ethnicity == "Other"] * 1.05
-
-# interaction: young males
-long_data$weights[long_data$age_baseline < 35 & long_data$gender == "Male"] <-
-  long_data$weights[long_data$age_baseline < 35 & long_data$gender == "Male"] * 1.05
-
-# normalize weights to average 1.0
-long_data$weights <- long_data$weights / mean(long_data$weights, na.rm = TRUE)
 
 # save oracle data (before missingness)
 cat("\nSaving oracle data...\n")
 oracle_data <- long_data %>%
   arrange(id, years)
 
-# generate dropout with calibrated group retention targets
-cat("\nGenerating dropout with calibrated group retention targets...\n")
+# generate dropout with group retention targets
+cat("\nGenerating dropout with group retention targets...\n")
 
-target_retention <- c(high = 0.90, medium = 0.70, low = 0.30)
-target_overall_attrition <- 0.275
-drop_years <- 1:(n_waves - 1)
+target_retention <- c(high = 0.60, medium = 0.30, low = 0.10)
+drop_prob_group <- 1 - target_retention^(1 / (n_waves - 1))
 
-solve_group_intercept <- function(target, time_slope) {
-  retention_fn <- function(intercept) {
-    prod(1 - plogis(intercept + time_slope * drop_years)) - target
-  }
-  bracket_interval <- function(fn, lower = -10, upper = 10, step = 2, max_expand = 8) {
-    f_lower <- fn(lower)
-    f_upper <- fn(upper)
-    expand_count <- 0
-    while (f_lower * f_upper > 0 && expand_count < max_expand) {
-      lower <- lower - step
-      upper <- upper + step
-      f_lower <- fn(lower)
-      f_upper <- fn(upper)
-      expand_count <- expand_count + 1
-    }
-    list(lower = lower, upper = upper, f_lower = f_lower, f_upper = f_upper)
-  }
-
-  bracket <- bracket_interval(retention_fn)
-  if (bracket$f_lower * bracket$f_upper > 0) {
-    stop("Failed to bracket retention target for intercept.", call. = FALSE)
-  }
-  uniroot(retention_fn, interval = c(bracket$lower, bracket$upper))$root
-}
-
-overall_attrition_for_slope <- function(time_slope, group_sizes) {
-  group_intercepts <- c(
-    high = solve_group_intercept(target_retention["high"], time_slope),
-    medium = solve_group_intercept(target_retention["medium"], time_slope),
-    low = solve_group_intercept(target_retention["low"], time_slope)
-  )
-
-  overall_attrition <- numeric(length(drop_years))
-  group_survival <- rep(1, length(group_sizes))
-  names(group_survival) <- names(group_sizes)
-
-  for (i in seq_along(drop_years)) {
-    year_value <- drop_years[i]
-    hazards <- plogis(group_intercepts + time_slope * year_value)
-    expected_events <- sum(group_sizes * group_survival * hazards)
-    expected_at_risk <- sum(group_sizes * group_survival)
-    overall_attrition[i] <- expected_events / expected_at_risk
-    group_survival <- group_survival * (1 - hazards)
-  }
-
-  mean(overall_attrition)
-}
+cat("Per-wave dropout probabilities:\n")
+print(round(drop_prob_group, 3))
 
 group_sizes <- participants |>
   count(trust_group) |>
   tibble::deframe()
+group_sizes <- group_sizes[names(drop_prob_group)]
 
-attrition_gap <- function(time_slope) {
-  overall_attrition_for_slope(time_slope, group_sizes) - target_overall_attrition
+expected_overall_attrition <- function(drop_probs, group_sizes, n_waves) {
+  survival <- group_sizes
+  attrition <- numeric(n_waves - 1)
+  for (t in seq_len(n_waves - 1)) {
+    dropped <- sum(survival * drop_probs)
+    at_risk <- sum(survival)
+    attrition[t] <- dropped / at_risk
+    survival <- survival * (1 - drop_probs)
+  }
+  attrition
 }
 
-time_slope_bounds <- c(-1, 2)
-attrition_at_bounds <- sapply(time_slope_bounds, attrition_gap)
-
-if (attrition_at_bounds[1] * attrition_at_bounds[2] < 0) {
-  time_slope <- uniroot(attrition_gap, interval = time_slope_bounds)$root
-} else {
-  time_slope <- optimize(
-    function(x) abs(attrition_gap(x)),
-    interval = time_slope_bounds
-  )$minimum
-  cat("Warning: target overall attrition not bracketed; using best-fit time slope.\n")
-}
-
-group_intercepts <- c(
-  high = solve_group_intercept(target_retention["high"], time_slope),
-  medium = solve_group_intercept(target_retention["medium"], time_slope),
-  low = solve_group_intercept(target_retention["low"], time_slope)
-)
+expected_attrition <- expected_overall_attrition(drop_prob_group, group_sizes, n_waves)
+cat("Expected overall attrition by year:\n")
+print(round(expected_attrition, 3))
 
 long_data <- long_data |>
   arrange(id, years) |>
   group_by(id) |>
   mutate(
-    drop_prob = case_when(
-      years == 0 ~ 0,
-      trust_group == "high" ~ plogis(group_intercepts["high"] + time_slope * years),
-      trust_group == "medium" ~ plogis(group_intercepts["medium"] + time_slope * years),
-      trust_group == "low" ~ plogis(group_intercepts["low"] + time_slope * years),
-      TRUE ~ 0
-    ),
+    drop_prob = if_else(years == 0, 0, drop_prob_group[trust_group]),
     dropped = cummax(rbinom(n(), 1, drop_prob))
   ) |>
   ungroup()
 
-cat("Calibrated time slope:", round(time_slope, 3), "\n")
 cat("Target retention (final wave):\n")
 print(target_retention)
 
@@ -384,32 +266,33 @@ cat("\n\n=== COMPARING ORACLE VS OBSERVED ===\n")
 
 # fit models to oracle data
 cat("\nFitting model to oracle data...\n")
+gee_formula <- trust_science ~ factor(years)
 mod_oracle <- geepack::geeglm(
-  trust_science ~ ns(years, 3),
+  gee_formula,
   id = id,
   data = oracle_data,
   corstr = "exchangeable"
 )
 
-pred_oracle <- predict_response(mod_oracle, "years[all]")
-cat("Oracle trajectory:\n")
+pred_oracle <- predict_response(mod_oracle, "years")
+cat("Oracle trajectory (gee, factor years):\n")
 print(round(pred_oracle$predicted, 3))
 
-# fit models to observed data (complete cases only)
-cat("\nFitting model to observed data (complete cases)...\n")
+# fit models to observed data (available cases)
+cat("\nFitting model to observed data (available cases)...\n")
 observed_complete <- observed_data[!is.na(observed_data$trust_science), ] %>%
   arrange(id, years)
 
 mod_observed <- geepack::geeglm(
-  trust_science ~ ns(years, 3),
+  gee_formula,
   id = id,
   weights = weights,
   data = observed_complete,
   corstr = "exchangeable"
 )
 
-pred_observed <- predict_response(mod_observed, "years[all]")
-cat("Observed trajectory:\n")
+pred_observed <- predict_response(mod_observed, "years")
+cat("Observed trajectory (gee, factor years):\n")
 print(round(pred_observed$predicted, 3))
 
 # ========================================================================
@@ -421,8 +304,6 @@ dat_ipcw <- observed_data |>
   arrange(id, years) |>
   group_by(id) |>
   mutate(
-    trust_science_lag1 = lag(trust_science, 1),
-    trust_scientists_lag1 = lag(trust_scientists, 1),
     observed = as.numeric(!is.na(trust_science)),
     at_risk = lag(observed, default = 1) == 1
   ) |>
@@ -431,21 +312,10 @@ dat_ipcw <- observed_data |>
 dat_at_risk <- dat_ipcw |>
   dplyr::filter(at_risk == 1 & years > 0)
 
-baseline_data <- dat_ipcw |>
-  dplyr::filter(years == 0) |>
-  dplyr::select(id, age_baseline, gender, education) |>
-  rename(
-    age_b = age_baseline,
-    gender_b = gender,
-    education_b = education
-  )
-
-dat_model <- dat_at_risk |>
-  left_join(baseline_data, by = "id")
+dat_model <- dat_at_risk
 
 dropout_model <- glm(
-  observed ~ trust_science_lag1 + trust_scientists_lag1 +
-    age_b + gender_b + education_b + factor(years),
+  observed ~ trust_group + factor(years),
   data = dat_model,
   family = binomial
 )
@@ -490,20 +360,19 @@ ipcw_complete <- dat_weighted |>
   dplyr::filter(observed == 1)
 
 mod_ipcw <- geepack::geeglm(
-  trust_science ~ ns(years, 3),
+  gee_formula,
   id = id,
   weights = combined_weight,
   data = ipcw_complete,
   corstr = "exchangeable"
 )
 
-pred_ipcw <- predict_response(mod_ipcw, "years[all]")
-cat("IPCW trajectory:\n")
+pred_ipcw <- predict_response(mod_ipcw, "years")
+cat("IPCW trajectory (gee, factor years):\n")
 print(round(pred_ipcw$predicted, 3))
 
 # create visualizations
 library(patchwork)
-library(MASS) # for polr
 
 cat("\n\n=== CREATING CONTINUOUS OUTCOME PLOTS ===\n")
 
@@ -576,13 +445,13 @@ ggsave(
 # summary statistics
 cat("\n\nSUMMARY:\n")
 cat(
-  "Oracle: Year 1 =", round(pred_oracle$predicted[1], 3),
-  "Year 5 =", round(pred_oracle$predicted[5], 3),
+  "Oracle: Year 0 =", round(pred_oracle$predicted[1], 3),
+  "Year 4 =", round(pred_oracle$predicted[5], 3),
   "Change =", round(pred_oracle$predicted[5] - pred_oracle$predicted[1], 3), "\n"
 )
 cat(
-  "Observed: Year 1 =", round(pred_observed$predicted[1], 3),
-  "Year 5 =", round(pred_observed$predicted[5], 3),
+  "Observed: Year 0 =", round(pred_observed$predicted[1], 3),
+  "Year 4 =", round(pred_observed$predicted[5], 3),
   "Change =", round(pred_observed$predicted[5] - pred_observed$predicted[1], 3), "\n"
 )
 
@@ -629,8 +498,7 @@ cat("\nVariables in observed_data:", paste(names(observed_data), collapse = ", "
 amelia_data <- observed_data %>%
   dplyr::select(
     -trust_group, -drop_prob, -dropped,
-    -trust_science_baseline, -trust_scientists_baseline,
-    -trust_science_mean, -trust_scientists_mean
+    -trust_science_baseline, -trust_scientists_baseline
   ) %>%
   arrange(id, years)
 
@@ -714,78 +582,119 @@ mice_obj <- mice::mice(
   seed = 2025
 )
 
-# fit GEE models for imputed data
-cat("\n\n=== FITTING GEE MODELS TO IMPUTED DATA ===\n")
+# compute imputed means
+cat("\n\n=== COMPUTING IMPUTED MEANS ===\n")
 
-gee_science_imputed <- lapply(1:10, function(i) {
-  dat_imp <- mice::complete(mids_data, i) %>%
-    arrange(id, years)
-  geepack::geeglm(
-    trust_science ~ ns(years, 3),
-    id = id,
-    weights = weights,
-    data = dat_imp,
-    corstr = "exchangeable"
-  )
+compute_weighted_means <- function(data, weight_var) {
+  data |>
+    group_by(years) |>
+    summarise(
+      mean_trust = weighted.mean(trust_science, .data[[weight_var]], na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
+oracle_means <- compute_weighted_means(oracle_data, "weights") |>
+  mutate(method = "Oracle")
+observed_means <- compute_weighted_means(observed_data, "weights") |>
+  mutate(method = "Observed")
+ipcw_means <- compute_weighted_means(ipcw_complete, "combined_weight") |>
+  mutate(method = "IPCW")
+
+amelia_means_list <- lapply(seq_len(amelia_out$m), function(i) {
+  amelia_out$imputations[[i]] |>
+    group_by(years) |>
+    summarise(
+      mean_trust = weighted.mean(trust_science, weights, na.rm = TRUE),
+      .groups = "drop"
+    )
 })
 
-# get predictions
-pred_science_imputed <- lapply(gee_science_imputed, function(m) {
-  predict_response(m, "years[all]")
+amelia_means <- bind_rows(amelia_means_list, .id = "imp") |>
+  group_by(years) |>
+  summarise(
+    mean_trust = mean(mean_trust),
+    .groups = "drop"
+  ) |>
+  mutate(method = "Amelia")
+
+mice_means_list <- lapply(seq_len(n_imputations_mice), function(i) {
+  mice::complete(mice_obj, i) |>
+    pivot_longer(
+      cols = starts_with("trust_science_"),
+      names_to = "year",
+      values_to = "trust_science",
+      names_prefix = "trust_science_"
+    ) |>
+    mutate(years = as.numeric(year)) |>
+    group_by(years) |>
+    summarise(
+      mean_trust = weighted.mean(trust_science, weights, na.rm = TRUE),
+      .groups = "drop"
+    )
 })
 
-# pool predictions
-pooled_science <- pool_predictions(pred_science_imputed)
-pooled_science
-# compare results
-cat("\nTrust in Science Results:\n")
-cat(
-  "Oracle:   Year 0 =", round(pred_oracle$predicted[1], 3),
-  "Year 4 =", round(pred_oracle$predicted[5], 3),
-  "Change =", round(pred_oracle$predicted[5] - pred_oracle$predicted[1], 3), "\n"
-)
-cat(
-  "Observed: Year 0 =", round(pred_observed$predicted[1], 3),
-  "Year 4 =", round(pred_observed$predicted[5], 3),
-  "Change =", round(pred_observed$predicted[5] - pred_observed$predicted[1], 3), "\n"
-)
-cat(
-  "IPCW:     Year 0 =", round(pred_ipcw$predicted[1], 3),
-  "Year 4 =", round(pred_ipcw$predicted[5], 3),
-  "Change =", round(pred_ipcw$predicted[5] - pred_ipcw$predicted[1], 3), "\n"
-)
-cat(
-  "Imputed:  Year 0 =", round(pooled_science$predicted[1], 3),
-  "Year 4 =", round(pooled_science$predicted[5], 3),
-  "Change =", round(pooled_science$predicted[5] - pooled_science$predicted[1], 3), "\n"
+mice_means <- bind_rows(mice_means_list, .id = "imp") |>
+  group_by(years) |>
+  summarise(
+    mean_trust = mean(mean_trust),
+    .groups = "drop"
+  ) |>
+  mutate(method = "MICE")
+
+continuous_means <- bind_rows(
+  oracle_means,
+  observed_means,
+  ipcw_means,
+  amelia_means,
+  mice_means
 )
 
-# create comparison plot
-p_gee_comparison <- plot(pred_oracle) +
-  ggtitle("Oracle (Ground Truth)") +
-  ylim(4.5, 5.5) +
-  plot(pred_ipcw) +
-  ggtitle("IPCW") +
-  ylim(4.5, 5.5) +
-  plot(pooled_science) +
-  ggtitle("Imputed") +
-  ylim(4.5, 5.5) +
-  plot(pred_observed) +
-  ggtitle("Observed (Complete Cases)") +
-  ylim(4.5, 5.5) +
-  plot_annotation(
-    title = "Trust in Science: Comparing Oracle, IPCW, Imputed, and Observed",
-    subtitle = "GEE models with natural splines"
+continuous_change <- continuous_means |>
+  group_by(method) |>
+  summarise(
+    year_0 = mean_trust[years == min(years)],
+    year_last = mean_trust[years == max(years)],
+    change = year_last - year_0,
+    .groups = "drop"
+  ) |>
+  mutate(method = factor(method, levels = c("Oracle", "Observed", "IPCW", "Amelia", "MICE"))) |>
+  arrange(method)
+
+cat("\nTrust in Science Results (weighted means):\n")
+for (i in seq_len(nrow(continuous_change))) {
+  row <- continuous_change[i, ]
+  cat(
+    as.character(row$method), ": Year 0 =", round(row$year_0, 3),
+    "Year 4 =", round(row$year_last, 3),
+    "Change =", round(row$change, 3), "\n"
   )
+}
 
-# print(p_gee_comparison)
+p_mean_comparison <- ggplot(
+  continuous_means,
+  aes(x = years, y = mean_trust, color = method)
+) +
+  geom_line(size = 1.1) +
+  geom_point(size = 2) +
+  scale_x_continuous(breaks = 0:4, labels = 1:5) +
+  labs(
+    x = "Year of Study",
+    y = "Mean Trust in Science (1-7)",
+    title = "Trust in Science: Mean Recovery by Method",
+    subtitle = "Year means with retention-driven attrition"
+  ) +
+  theme_minimal()
+
+
 ggsave(
-  here::here("results", "figures", "test_3_imputation_comparison.png"),
-  p_gee_comparison,
-  width = 20,
-  height = 5,
+  here::here("results", "figures", "test_3_mean_comparison.png"),
+  p_mean_comparison,
+  width = 10,
+  height = 6,
   dpi = 300
 )
+p_mean_comparison
 
 # ========================================================================
 # CATEGORICAL AND ORDINAL COMPARISONS
@@ -857,7 +766,7 @@ amelia_cat_props <- bind_rows(amelia_cat_props_list, .id = "imp") |>
     .groups = "drop"
   )
 
-mice_cat_props_list <- lapply(seq_len(mids_data$m), function(i) {
+mice_cat_props_list <- lapply(seq_len(n_imputations_mice), function(i) {
   mice::complete(mice_obj, i) |>
     pivot_longer(
       cols = starts_with("trust_science_"),
@@ -865,8 +774,10 @@ mice_cat_props_list <- lapply(seq_len(mids_data$m), function(i) {
       values_to = "trust_science",
       names_prefix = "trust_science_"
     ) |>
-    mutate(trust_cat = create_trust_categories(trust_science)) |>
-    mutate(years = as.numeric(year)) |>
+    mutate(
+      years = as.numeric(year),
+      trust_cat = create_trust_categories(trust_science)
+    ) |>
     group_by(years) |>
     summarise(
       low = weighted.mean(trust_cat == "Low", weights, na.rm = TRUE),
@@ -969,7 +880,7 @@ ordinal_thresholds <- bind_rows(
 )
 
 cat("\nOrdinal model thresholds (pooled where applicable):\n")
-# print(ordinal_thresholds)
+print(ordinal_thresholds)
 
 cat_prop_long <- bind_rows(
   oracle_cat_props |>
@@ -1054,22 +965,33 @@ print(observed_transitions)
 
 observed_by_group <- observed_data |>
   mutate(trust_cat = create_trust_categories(trust_science)) |>
+  dplyr::filter(!is.na(trust_cat)) |>
   group_by(years, trust_group, trust_cat) |>
   summarise(
     n = n(),
     .groups = "drop"
   ) |>
-  ungroup() |>
   group_by(years, trust_group) |>
-  mutate(prop = n / sum(n)) |>
+  mutate(
+    total_n = sum(n),
+    prop = n / total_n
+  ) |>
   ungroup()
 
 cat("\nObserved category proportions by trust_group and year:\n")
 print(observed_by_group)
 
+observed_prop_check <- observed_by_group |>
+  group_by(years, trust_group) |>
+  summarise(prop_sum = sum(prop), .groups = "drop")
+
+cat("\nObserved category proportion sums (should be 1):\n")
+print(observed_prop_check)
+
+
 p_cat <- ggplot(
   cat_prop_long,
-  aes(x = years, y = proportion, color = method, linetype = category)
+  aes(x = years, y = proportion, color = method, group = method)
 ) +
   geom_line(size = 1.2) +
   geom_point(size = 2) +
@@ -1080,17 +1002,13 @@ p_cat <- ggplot(
     "Amelia" = "darkgreen",
     "MICE" = "orange"
   )) +
-  scale_linetype_manual(values = c(
-    "Low" = "solid",
-    "Medium" = "dotdash",
-    "High" = "dashed"
-  )) +
   labs(
     x = "Year",
     y = "Proportion",
     title = "Category Proportions by Method",
     subtitle = "Low = ≤3, Medium = 4-5, High = ≥6"
   ) +
+  facet_wrap(~category, nrow = 1) +
   theme_minimal()
 
 ggsave(
@@ -1100,6 +1018,8 @@ ggsave(
   height = 6,
   dpi = 300
 )
+
+print(cat_prop_long, n = 100)
 p_cat
 # ========================================================================
 # SAVE OUTPUTS
@@ -1126,7 +1046,8 @@ analysis_outputs <- list(
   pred_oracle = pred_oracle,
   pred_observed = pred_observed,
   pred_ipcw = pred_ipcw,
-  pooled_science = pooled_science
+  continuous_means = continuous_means,
+  continuous_change = continuous_change
 )
 
 saveRDS(
@@ -1142,3 +1063,9 @@ imp_model <- lm(trust_science ~ education + age_baseline + gender + ethnicity, d
 cat("R-squared of demographics predicting trust in imputed data:", round(summary(imp_model)$r.squared, 3), "\n")
 cat("Coefficients:\n")
 print(round(coef(imp_model), 3))
+outputs <- readRDS(here::here("results/objects/test_3_improved_outputs.rds"))
+
+# show
+outputs$oracle_transitions
+outputs$observed_transitions
+print(outputs$observed_by_group, n = 50)
