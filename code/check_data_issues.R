@@ -1,5 +1,6 @@
 # Check data issues
-data <- read.csv("data/synthetic/synthetic_trust_data.csv")
+library(here)
+data <- readRDS(here::here("data", "synthetic", "synthetic_trust_data.rds"))
 
 # check for all-missing individuals
 trust_by_id <- tapply(data$trust_science, data$id, function(x) sum(!is.na(x)))

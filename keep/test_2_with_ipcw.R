@@ -12,6 +12,16 @@ library(ipw)
 library(Amelia)
 library(mice)
 library(patchwork)
+library(here)
+
+# ensure output directories exist
+output_dirs <- c(
+  here::here("results", "figures"),
+  here::here("results", "objects")
+)
+for (dir_path in output_dirs) {
+  dir.create(dir_path, recursive = TRUE, showWarnings = FALSE)
+}
 
 # parameters
 n_participants <- 40000  # larger sample for clearer patterns
@@ -535,8 +545,13 @@ combined_performance <- comparison_plot / bias_plot +
 print(combined_performance)
 
 # save results
-ggsave("results/figures/method_performance_comparison.png", combined_performance,
-       width = 10, height = 12, dpi = 300)
+ggsave(
+  here::here("results", "figures", "method_performance_comparison.png"),
+  combined_performance,
+  width = 10,
+  height = 12,
+  dpi = 300
+)
 
 # detailed year-by-year comparison
 cat("\n\nDetailed Year-by-Year Comparison:\n")
@@ -586,8 +601,8 @@ create_trust_categories <- function(trust_var) {
     case_when(
       is.na(trust_var) ~ NA_character_,
       trust_var <= 3 ~ "Low",
-      trust_var <= 5 ~ "Medium",
-      trust_var > 5 ~ "High"
+      trust_var < 6 ~ "Medium",
+      trust_var >= 6 ~ "High"
     ),
     levels = c("Low", "Medium", "High"),
     ordered = TRUE
@@ -961,7 +976,7 @@ p_cat_props <- ggplot(cat_prop_data,
     x = "Year",
     y = "Proportion",
     title = "Category Proportions by Method",
-    subtitle = "Solid lines = Low trust (≤3), Dashed lines = High trust (>5)",
+    subtitle = "Solid lines = Low trust (≤3), Dashed lines = High trust (≥6)",
     color = "Method",
     linetype = "Category"
   ) +
@@ -1004,8 +1019,13 @@ combined_ordinal <- p_cat_props / p_baseline +
   )
 
 print(combined_ordinal)
-ggsave("results/figures/ordinal_method_comparison.png", combined_ordinal,
-       width = 12, height = 14, dpi = 300)
+ggsave(
+  here::here("results", "figures", "ordinal_method_comparison.png"),
+  combined_ordinal,
+  width = 12,
+  height = 14,
+  dpi = 300
+)
 
 # ========================================================================
 # 10. COMPREHENSIVE PERFORMANCE SUMMARY

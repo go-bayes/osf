@@ -26,8 +26,8 @@ fix_mids_factors <- function(mids_obj, factor_vars, verbose = TRUE) {
       data$trust_science_factor <- factor(
         case_when(
           data$trust_science <= 3 ~ "low",
-          data$trust_science <= 5 ~ "med",
-          data$trust_science > 5 ~ "high"
+          data$trust_science < 6 ~ "med",
+          data$trust_science >= 6 ~ "high"
         ),
         levels = c("low", "med", "high"),
         ordered = TRUE
@@ -38,8 +38,8 @@ fix_mids_factors <- function(mids_obj, factor_vars, verbose = TRUE) {
       data$trust_scientists_factor <- factor(
         case_when(
           data$trust_scientists <= 3 ~ "low",
-          data$trust_scientists <= 5 ~ "med",
-          data$trust_scientists > 5 ~ "high"
+          data$trust_scientists < 6 ~ "med",
+          data$trust_scientists >= 6 ~ "high"
         ),
         levels = c("low", "med", "high"),
         ordered = TRUE

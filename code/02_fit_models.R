@@ -334,23 +334,26 @@ cat("\nModel outputs saved to: results/model_outputs/\n")
 cat("\n=== ANALYZING ORACLE DATA (GROUND TRUTH) ===\n")
 
 # load oracle data
-oracle_path <- "data/synthetic/oracle_trust_data.csv"
-if (file.exists(oracle_path)) {
-  dat_oracle <- read.csv(oracle_path)
+oracle_path_rds <- here::here("data", "synthetic", "oracle_trust_data.rds")
+oracle_path_csv <- here::here("data", "synthetic", "oracle_trust_data.csv")
+if (file.exists(oracle_path_rds)) {
+  dat_oracle <- readRDS(oracle_path_rds)
+} else if (file.exists(oracle_path_csv)) {
+  dat_oracle <- read.csv(oracle_path_csv)
 
   # add factor variables and ensure sorting
   dat_oracle <- dat_oracle %>%
     mutate(
       trust_science_factor = case_when(
         trust_science <= 3 ~ "low",
-        trust_science <= 5 ~ "med",
-        trust_science > 5 ~ "high"
+        trust_science < 6 ~ "med",
+        trust_science >= 6 ~ "high"
       ) %>%
         factor(levels = c("low", "med", "high"), ordered = TRUE),
       trust_scientists_factor = case_when(
         trust_scientists <= 3 ~ "low",
-        trust_scientists <= 5 ~ "med",
-        trust_scientists > 5 ~ "high"
+        trust_scientists < 6 ~ "med",
+        trust_scientists >= 6 ~ "high"
       ) %>%
         factor(levels = c("low", "med", "high"), ordered = TRUE)
     ) %>%
@@ -517,7 +520,9 @@ if (file.exists(oracle_path)) {
   cat("  ✓ Oracle analysis complete\n")
 
 } else {
-  cat("\nWarning: Oracle data not found at:", oracle_path, "\n")
+  cat("\nWarning: Oracle data not found at:\n")
+  cat("  -", oracle_path_rds, "\n")
+  cat("  -", oracle_path_csv, "\n")
 }
 cat("\nNext step: Run 03_create_visualizations.R\n")
 

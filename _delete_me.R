@@ -3,6 +3,9 @@
 # while protecting individual privacy
 # joseph.bulbulia@gmail.com
 
+# deprecated 2026-01-05: use keep/test_3_improved.R instead
+stop("Deprecated script. Use keep/test_3_improved.R.", call. = FALSE)
+
 # function to generate synthetic trust data
 generate_synthetic_trust_data <- function(
     n_participants = 40000,
@@ -682,4 +685,3 @@ print(table(observed_cat_y5$trust_science_factor, useNA = "always"))
 
 naniar::vis_miss(oracle_data, warn_large_data = FALSE)
 naniar::vis_miss(observed_data, warn_large_data = FALSE)
-

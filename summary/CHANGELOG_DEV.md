@@ -1,5 +1,24 @@
 # CHANGELOG_DEV.md
 
+## 2026-01-05 - Canonical Simulation Refresh, IPCW Comparison, and Pooled Ordinal Results
+
+### Added
+- **IPCW integration in `keep/test_3_improved.R`** to compare attrition correction under the current-trust dropout mechanism.
+- **Pooled ordinal thresholds** for Amelia and MICE, with threshold summaries saved alongside outputs.
+- **RDS output bundle** (`results/objects/test_3_improved_outputs.rds`) for reproducible downstream use.
+
+### Changed
+- **Canonical simulation** now anchored to `keep/test_3_improved.R` with IPCW, imputation, and categorical comparisons.
+- **Category cutpoints aligned** to Low ≤3, Medium 4–5, High ≥6 across active scripts.
+- **Simulation outputs and figures** now use `here::here()` for file paths.
+- **Synthetic data storage** now defaults to `.rds` files with updated loaders.
+- **Dropout calibration** now targets group retention with overall attrition tuning.
+- **Medium trust stability** enforced by removing medium-group measurement noise.
+- **MICE comparison** now uses a real wide-format imputation instead of Amelia-converted mids objects.
+
+### Deprecated
+- `_delete_me.R` is now blocked from execution in favour of the canonical script.
+
 ## 2025-01-07 - IPCW Ordinal Analysis and Visualization Scripts
 
 ### Added

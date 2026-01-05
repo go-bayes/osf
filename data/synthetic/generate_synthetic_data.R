@@ -17,6 +17,7 @@ generate_synthetic_trust_data <- function(
     stop("Package 'dplyr' is required for data generation")
   }
   library(dplyr)
+  library(here)
 
   cat("Generating synthetic NZAVS-like data...\n")
   cat("Participants:", n_participants, "\n")
@@ -286,9 +287,10 @@ generate_synthetic_trust_data <- function(
   oracle_data$weights[is.na(oracle_data$weights)] <- 1  # ensure oracle has complete weights
 
   # save oracle data for comparison (has complete data before missingness)
-  write.csv(oracle_data,
-            file = "data/synthetic/oracle_trust_data.csv",
-            row.names = FALSE)
+  output_dir <- here::here("data", "synthetic")
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  oracle_path <- here::here("data", "synthetic", "oracle_trust_data.rds")
+  saveRDS(oracle_data, file = oracle_path)
   cat("Oracle data saved (complete data before applying missingness)\n")
 
   # sort by id and years
@@ -351,15 +353,14 @@ if (interactive()) {
   cat("\nGenerating synthetic dataset...\n")
   synthetic_data <- generate_synthetic_trust_data()
 
-  # save as csv
-  write.csv(synthetic_data,
-            file = "synthetic_trust_data.csv",
-            row.names = FALSE)
+  output_dir <- here::here("data", "synthetic")
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  synthetic_path <- here::here("data", "synthetic", "synthetic_trust_data.rds")
+  saveRDS(synthetic_data, file = synthetic_path)
 
-  cat("\nSynthetic data saved to: synthetic_trust_data.csv\n")
+  cat("\nSynthetic data saved to: ", synthetic_path, "\n", sep = "")
 
   # show first few rows
   cat("\nFirst 10 rows:\n")
   print(head(synthetic_data, 10))
 }
-

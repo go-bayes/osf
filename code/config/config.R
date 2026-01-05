@@ -16,7 +16,7 @@ if (USE_REAL_DATA) {
 } else {
   # use synthetic data
   DATA_PATH <- "data/synthetic"
-  SYNTHETIC_DATA_FILE <- "synthetic_trust_data.csv"
+  SYNTHETIC_DATA_FILE <- "synthetic_trust_data.rds"
 }
 
 # output directory for saved models and intermediate files

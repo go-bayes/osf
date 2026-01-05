@@ -16,8 +16,8 @@
   - Added splinetime=3, polytime=3
   - Fixed education inclusion in imputation model
 - Files created:
-  - `data/synthetic/synthetic_trust_data.csv`
-  - `data/synthetic/oracle_trust_data.csv`
+  - `data/synthetic/synthetic_trust_data.rds`
+  - `data/synthetic/oracle_trust_data.rds`
   - `data/processed/mids_obj.rds`
   - `data/processed/dat_observed.rds`
 
@@ -91,8 +91,8 @@ osf/
 ├── data/
 │   ├── synthetic/
 │   │   ├── generate_synthetic_data.R
-│   │   ├── synthetic_trust_data.csv
-│   │   └── oracle_trust_data.csv
+│   │   ├── synthetic_trust_data.rds
+│   │   └── oracle_trust_data.rds
 │   └── processed/
 │       ├── mids_obj.rds
 │       ├── dat_observed.rds

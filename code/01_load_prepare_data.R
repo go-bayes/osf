@@ -59,7 +59,7 @@ if (USE_REAL_DATA) {
 
   if (!file.exists(synthetic_path)) {
     cat("Synthetic data not found. Generating...\n")
-    source("data/synthetic/generate_synthetic_data.R")
+    source(here::here("data", "synthetic", "generate_synthetic_data.R"))
 
     # generate synthetic data
     synthetic_data <- generate_synthetic_trust_data(
@@ -70,11 +70,11 @@ if (USE_REAL_DATA) {
     )
 
     # save for future use
-    write.csv(synthetic_data, synthetic_path, row.names = FALSE)
+    saveRDS(synthetic_data, synthetic_path)
     cat("Synthetic data saved to:", synthetic_path, "\n")
   } else {
     # load existing synthetic data
-    synthetic_data <- read.csv(synthetic_path)
+    synthetic_data <- readRDS(synthetic_path)
     cat("Loaded existing synthetic data from:", synthetic_path, "\n")
   }
 
@@ -197,15 +197,15 @@ dat_observed <- dat_observed %>%
     trust_science_factor = case_when(
       is.na(trust_science) ~ NA_character_,
       trust_science <= 3 ~ "low",
-      trust_science <= 5 ~ "med",
-      trust_science > 5 ~ "high"
+      trust_science < 6 ~ "med",
+      trust_science >= 6 ~ "high"
     ) %>%
       factor(levels = FACTOR_LEVELS, ordered = TRUE),
     trust_scientists_factor = case_when(
       is.na(trust_scientists) ~ NA_character_,
       trust_scientists <= 3 ~ "low",
-      trust_scientists <= 5 ~ "med",
-      trust_scientists > 5 ~ "high"
+      trust_scientists < 6 ~ "med",
+      trust_scientists >= 6 ~ "high"
     ) %>%
       factor(levels = FACTOR_LEVELS, ordered = TRUE)
   )
@@ -268,4 +268,3 @@ cat("Imputations:", data_summary$n_imputations, "\n")
 cat("Data source:", data_summary$data_source, "\n")
 cat("\nProcessed data saved to: data/processed/\n")
 cat("\nNext step: Run 02_fit_models.R\n")
-

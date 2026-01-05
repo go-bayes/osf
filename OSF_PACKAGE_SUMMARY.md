@@ -36,8 +36,8 @@ This package contains all materials needed to reproduce the analysis from:
   - **NEW**: Linear time trends (low: -0.3/year, medium: 0, high: +0.2/year)
   - **NEW**: Current-value-dependent dropout via logistic model
   - **NEW**: Reduced measurement noise (σ=0.10) for clearer education signal
-- **synthetic_trust_data.csv** - Pre-generated synthetic dataset
-- **oracle_trust_data.csv** - Complete data before missingness (ground truth)
+- **synthetic_trust_data.rds** - Pre-generated synthetic dataset
+- **oracle_trust_data.rds** - Complete data before missingness (ground truth)
 
 ### 📁 documentation/
 - **README.md** - Main documentation

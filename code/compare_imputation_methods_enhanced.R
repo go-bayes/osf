@@ -14,14 +14,32 @@ library(MASS)
 library(splines)
 library(ggeffects)
 library(patchwork)
+library(here)
+
+# ensure output directories exist
+output_dirs <- c(
+  here::here("results", "figures"),
+  here::here("results", "objects")
+)
+for (dir_path in output_dirs) {
+  dir.create(dir_path, recursive = TRUE, showWarnings = FALSE)
+}
 
 # parameters
 n_participants <- 10000  # reasonable size for comparison
 n_waves <- 5
 n_imputations <- 5  # reduced from 10-20 for efficiency
 
-# source the simulation code from keep directory
-source("keep/test_2_with_ipcw.R")
+# source the canonical simulation code from keep directory
+source(here::here("keep", "test_3_improved.R"))
+
+# align reported parameters with generated data
+n_participants <- observed_data |>
+  dplyr::distinct(id) |>
+  nrow()
+n_waves <- observed_data |>
+  dplyr::distinct(years) |>
+  nrow()
 
 # ========================================================================
 # enhanced method comparison with categorical and ordinal outcomes
@@ -221,50 +239,89 @@ cc_ord_data <- observed_data %>%
   dplyr::filter(!is.na(trust_science)) %>%
   mutate(trust_cat = create_trust_categories(trust_science))
 
-# fit ordinal models
-ordinal_results <- list()
+# fit ordinal models with pooling for imputation methods
+fit_polr_thresholds <- function(data, weight_var = "weights") {
+  model <- polr(
+    trust_cat ~ ns(years, 3),
+    data = data,
+    weights = data[[weight_var]],
+    Hess = TRUE
+  )
+  tibble(
+    threshold_low_med = model$zeta[1],
+    threshold_med_high = model$zeta[2]
+  )
+}
 
-# oracle
-ordinal_results$oracle <- polr(
-  trust_cat ~ ns(years, 3),
-  data = oracle_ord_data,
-  weights = weights,
-  Hess = TRUE
-)
+pool_thresholds <- function(threshold_list, method_name) {
+  bind_rows(threshold_list) |>
+    summarise(
+      threshold_low_med = mean(threshold_low_med),
+      threshold_low_med_sd = sd(threshold_low_med),
+      threshold_med_high = mean(threshold_med_high),
+      threshold_med_high_sd = sd(threshold_med_high)
+    ) |>
+    mutate(method = method_name)
+}
 
-# complete case
-ordinal_results$complete_case <- polr(
-  trust_cat ~ ns(years, 3),
-  data = cc_ord_data,
-  weights = weights,
-  Hess = TRUE
-)
-
-# mice - use first imputation for simplicity
-mice_ord_data <- complete(mice_obj, 1) %>%
-  pivot_longer(
-    cols = starts_with("trust_science_"),
-    names_to = "year",
-    values_to = "trust_science",
-    names_prefix = "trust_science_"
-  ) %>%
+oracle_thresholds <- oracle_ord_data |>
+  fit_polr_thresholds() |>
   mutate(
-    years = as.numeric(year),
-    trust_cat = create_trust_categories(trust_science)
+    threshold_low_med_sd = NA_real_,
+    threshold_med_high_sd = NA_real_,
+    method = "Oracle"
   )
 
-ordinal_results$mice <- polr(
-  trust_cat ~ ns(years, 3),
-  data = mice_ord_data,
-  weights = weights,
-  Hess = TRUE
-)
+cc_thresholds <- cc_ord_data |>
+  fit_polr_thresholds() |>
+  mutate(
+    threshold_low_med_sd = NA_real_,
+    threshold_med_high_sd = NA_real_,
+    method = "Complete Case"
+  )
 
-# extract thresholds
-threshold_comparison <- data.frame(
-  method = names(ordinal_results),
-  threshold_low_med = sapply(ordinal_results, function(x) x$zeta[1]),
-  threshold_med_high = sapply(ordinal_results, function(x) x$zeta[2])
+ipcw_thresholds <- dat_weighted |>
+  dplyr::filter(observed == 1) |>
+  mutate(
+    trust_cat = create_trust_categories(trust_science),
+    combined_weight = ipcw * weights
+  ) |>
+  fit_polr_thresholds(weight_var = "combined_weight") |>
+  mutate(
+    threshold_low_med_sd = NA_real_,
+    threshold_med_high_sd = NA_real_,
+    method = "IPCW"
+  )
+
+mice_thresholds <- lapply(1:n_imputations, function(i) {
+  complete(mice_obj, i) |>
+    pivot_longer(
+      cols = starts_with("trust_science_"),
+      names_to = "year",
+      values_to = "trust_science",
+      names_prefix = "trust_science_"
+    ) %>%
+    mutate(
+      years = as.numeric(year),
+      trust_cat = create_trust_categories(trust_science)
+    ) |>
+    fit_polr_thresholds()
+}) |>
+  pool_thresholds("MICE")
+
+amelia_thresholds <- lapply(1:n_imputations, function(i) {
+  amelia_out$imputations[[i]] |>
+    mutate(trust_cat = create_trust_categories(trust_science)) |>
+    fit_polr_thresholds()
+}) |>
+  pool_thresholds("Amelia")
+
+threshold_comparison <- bind_rows(
+  oracle_thresholds,
+  cc_thresholds,
+  ipcw_thresholds,
+  amelia_thresholds,
+  mice_thresholds
 )
 
 cat("\nOrdinal Model Thresholds:\n")
@@ -361,7 +418,7 @@ print(performance_summary)
 
 # save enhanced comparison plot
 ggsave(
-  "results/figures/enhanced_method_comparison.png",
+  here::here("results", "figures", "enhanced_method_comparison.png"),
   p_cat,
   width = 10,
   height = 6,

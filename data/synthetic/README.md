@@ -5,8 +5,8 @@ This folder contains synthetic data generation scripts and outputs that demonstr
 ## Files
 
 - `generate_synthetic_data.R` - Script to generate synthetic longitudinal data
-- `synthetic_trust_data.csv` - Generated synthetic dataset (created on first run)
-- `oracle_trust_data.csv` - Complete data before missingness (for validation)
+- `synthetic_trust_data.rds` - Generated synthetic dataset (created on first run)
+- `oracle_trust_data.rds` - Complete data before missingness (for validation)
 
 ## Synthetic Data Features
 
@@ -83,7 +83,7 @@ While overall dropout rates are similar, the **composition** changes dramaticall
 
 ### Oracle Data
 
-The `oracle_trust_data.csv` file contains the complete synthetic data before applying missingness. This allows researchers to:
+The `oracle_trust_data.rds` file contains the complete synthetic data before applying missingness. This allows researchers to:
 - Compare true population trends vs. observed (biased) trends
 - Validate that imputation recovers patterns closer to the truth
 - Understand the impact of selective attrition
