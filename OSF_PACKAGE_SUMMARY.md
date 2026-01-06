@@ -6,7 +6,7 @@ This package contains all materials needed to reproduce the analysis from:
 
 ## Package Contents
 
-### 📁 code/
+### code/
 - **00_setup_environment.R** - Install/load packages and set up environment
 - **01_load_prepare_data.R** - Load data (real or synthetic) and prepare for analysis
 - **02_fit_models.R** - Fit all statistical models (GEE and proportional odds)
@@ -15,18 +15,18 @@ This package contains all materials needed to reproduce the analysis from:
 - **05_extract_results.R** - Extract key findings and create summaries
 - **06_generate_report.R** - Generate comprehensive report
 
-#### 📁 code/config/
+#### code/config/
 - **config.R** - Centralized configuration settings
 
-#### 📁 code/functions/
+#### code/functions/
 - **margot_amelia_to_mice_fixed.R** - Convert Amelia to MICE format
 - **fix_mids_factors.R** - Helper for factor variables in MICE
 
-#### 📁 code/demo/
+#### code/demo/
 - **run_demo.R** - Quick demonstration with synthetic data
 
-### 📁 data/
-#### 📁 data/synthetic/
+### data/
+#### data/synthetic/
 - **generate_synthetic_data.R** - Create synthetic data matching real data structure
   - 40,000 participants with 5 waves (2019-2023)
   - Three-group simulation design based on education
@@ -39,14 +39,14 @@ This package contains all materials needed to reproduce the analysis from:
 - **synthetic_trust_data.rds** - Pre-generated synthetic dataset
 - **oracle_trust_data.rds** - Complete data before missingness (ground truth)
 
-### 📁 documentation/
+### documentation/
 - **README.md** - Main documentation
 - **METHODS.md** - Detailed statistical methods
 - **RESULTS.md** - Key findings summary
 - **DATA_DICTIONARY.md** - Variable descriptions
 - **analysis_report.Rmd** - Full report template
 
-### 📁 results/
+### results/
 (Created when analysis is run)
 - **figures/** - All plots and visualizations
 - **tables/** - All tables in HTML and CSV formats
@@ -113,11 +113,3 @@ For questions about this reproducible analysis package:
 For access to original NZAVS data:
 - Visit: www.nzavs.auckland.ac.nz
 
-## Citation
-
-If using this code or synthetic data, please cite:
-```
-Kerr, J., Sibley, C. G., Houkamau, C., Osborne, D., Wilson, M., 
-Yogeswaran, K., & Bulbulia, J. A. (2025). Response bias masks 
-the erosion of trust in science over time. [Journal Name].
-```
