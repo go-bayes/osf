@@ -8,3 +8,4 @@ source("code/simulate_attrition_methods.R")
 ```
 
 3. The active code lives in `code/simulate_attrition_methods.R` with helper functions in `code/functions`. The legacy pipeline is archived under `retired/legacy_pipeline` for reference.
+4. The report template is available at `documentation/analysis_report.qmd` and uses the saved outputs.

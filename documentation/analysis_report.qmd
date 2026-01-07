@@ -1,0 +1,162 @@
+---
+title: "Trust in Science Attrition Simulation Report"
+subtitle: "Method comparison under MAR and MNAR"
+author: "Generated from OSF simulation"
+date: "`r Sys.Date()`"
+format:
+  html:
+    toc: true
+    toc_float: true
+    theme: flatly
+    code-fold: true
+---
+
+```{r}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE
+)
+source(file.path("..", "setup.R"))
+```
+
+# Executive Summary
+
+1. This report summarises a simulation that tests attrition bias in trust in science over five waves.
+2. The simulation compares Oracle, Observed, IPCW, Amelia, and MICE under MAR and MNAR dropout.
+3. The results highlight how selective attrition can inflate observed trust trajectories.
+
+# Methods
+
+1. We simulate 40,000 participants across five waves with three trust groups and integer trust scores from 1 to 7.
+2. The low and medium trust groups decline over time, while the high trust group stays flat.
+3. We calibrate group retention targets and apply dropout to trust outcomes after each wave.
+4. The MAR mechanism depends on baseline and lagged trust, while the MNAR mechanism also depends on current trust.
+5. We estimate mean trajectories with GEE, then recover them using IPCW and multiple imputation.
+
+# Clarifying MNAR
+
+1. MNAR differs from MAR by letting dropout depend on current trust at the time of attrition.
+2. This current trust becomes missing after dropout, so the mechanism is not fully observable.
+3. The coefficients are mild by design, so MAR and MNAR can look similar in the outputs.
+
+# Results
+
+## Continuous Trajectories
+
+1. The next figure contrasts oracle and observed trajectories for each scenario.
+
+```{r}
+#| label: fig-continuous-trajectories
+#| fig-cap: "Continuous trust in science trajectories under MAR and MNAR attrition."
+#| fig-height: 12
+#| fig-width: 12
+plot_continuous_comparison(scenario_results$mar) /
+  plot_continuous_comparison(scenario_results$mnar)
+```
+
+## Mean Recovery
+
+1. The plots below compare mean trajectories by method under MAR and MNAR.
+
+```{r}
+#| label: fig-mean-recovery
+#| fig-cap: "Mean trust in science recovery by method under MAR and MNAR attrition."
+#| fig-height: 12
+#| fig-width: 12
+plot_mean_recovery(scenario_results$mar) /
+  plot_mean_recovery(scenario_results$mnar)
+```
+
+## Categorical Recovery
+
+1. The categorical plots show how each method recovers low, medium, and high trust proportions.
+
+```{r}
+#| label: fig-category-recovery
+#| fig-cap: "Category proportions by method under MAR and MNAR attrition."
+#| fig-height: 12
+#| fig-width: 12
+plot_category_recovery(scenario_results$mar) /
+  plot_category_recovery(scenario_results$mnar)
+```
+
+## Summary Tables
+
+1. The table below summarises mean changes by method and scenario.
+
+```{r}
+mean_summary_wide <- scenario_summary |>
+  mutate(scenario = toupper(scenario)) |>
+  mutate(across(c(year_0, year_last, change), ~ round(.x, 3))) |>
+  tidyr::pivot_wider(
+    names_from = scenario,
+    values_from = c(year_0, year_last, change),
+    names_glue = "{scenario}_{.value}"
+  ) |>
+  select(
+    method,
+    MAR_year_0,
+    MAR_year_last,
+    MAR_change,
+    MNAR_year_0,
+    MNAR_year_last,
+    MNAR_change
+  ) |>
+  arrange(factor(method, levels = c("Oracle", "Observed", "IPCW", "Amelia", "MICE")))
+
+mean_summary_wide |>
+  knitr::kable(
+    col.names = c("Method", "Year 0", "Year 4", "Change", "Year 0", "Year 4", "Change"),
+    caption = "Mean change in trust by method and scenario",
+    align = "lrrrrrr"
+  ) |>
+  kableExtra::add_header_above(c(" " = 1, "MAR" = 3, "MNAR" = 3)) |>
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    bootstrap_options = c("striped", "hover", "condensed")
+  )
+```
+
+2. The next table summarises category shifts in percentage points.
+
+```{r}
+category_summary_wide <- category_summary |>
+  mutate(scenario = toupper(scenario)) |>
+  mutate(shift_pct = round(shift_pct, 3)) |>
+  select(method, category, scenario, shift_pct) |>
+  tidyr::pivot_wider(
+    names_from = scenario,
+    values_from = shift_pct
+  ) |>
+  arrange(
+    factor(method, levels = c("Oracle", "Observed", "Complete Case", "IPCW", "Amelia", "MICE")),
+    factor(category, levels = c("Low", "Medium", "High"))
+  )
+
+category_summary_wide |>
+  knitr::kable(
+    col.names = c("Method", "Category", "MAR (pp)", "MNAR (pp)"),
+    caption = "Category shifts in percentage points by method and scenario",
+    align = "llrr"
+  ) |>
+  kableExtra::collapse_rows(columns = 1, valign = "top") |>
+  kableExtra::kable_styling(
+    full_width = FALSE,
+    bootstrap_options = c("striped", "hover", "condensed")
+  )
+```
+
+# Reproducibility
+
+1. Run the simulation from the repository root using the command below.
+
+```r
+source("code/simulate_attrition_methods.R")
+```
+
+# Session Information
+
+```{r}
+sessionInfo()
+```

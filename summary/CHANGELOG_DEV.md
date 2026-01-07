@@ -6,6 +6,7 @@
 - Moved the canonical simulation script to `code/simulate_attrition_methods.R` and removed the obsolete `keep/` directory.
 - Archived legacy pipeline materials under `retired/legacy_pipeline` while preserving helper functions in `code/functions`.
 - Updated repository docs to reflect the new minimal structure and entrypoint.
+- Added a new report template at `documentation/analysis_report.qmd` for MAR and MNAR summaries.
 
 ## 2026-01-05 - Canonical Simulation Refresh, IPCW Comparison, and Pooled Ordinal Results
 

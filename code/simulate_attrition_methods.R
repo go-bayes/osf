@@ -370,8 +370,14 @@ simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_pa
 
 run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, attrition_summary, dropout_rates, retention_summary) {
   scenario_lower <- tolower(scenario_label)
+  dropout_note <- if (scenario_lower == "mnar") {
+    "Dropout depends on baseline, lagged, and current trust."
+  } else {
+    "Dropout depends on baseline and lagged trust."
+  }
 
   cat("\n\n=== COMPARING ORACLE VS OBSERVED (", scenario_label, ") ===\n")
+  cat("Dropout mechanism:", dropout_note, "\n")
 
   # fit models to oracle data
   cat("\nFitting model to oracle data...\n")
@@ -553,7 +559,7 @@ run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, at
   combined_continuous <- oracle_plot_science + observed_plot_science +
     plot_annotation(
       title = paste("Selection Bias in Trust Trajectories (", scenario_label, ")", sep = ""),
-      subtitle = "Low trust individuals drop out, creating artificial stability"
+      subtitle = paste("Low trust individuals drop out.", dropout_note)
     )
 
   ggsave(
@@ -862,7 +868,7 @@ run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, at
       x = "Year of Study",
       y = "Mean Trust in Science (1-7)",
       title = paste("Trust in Science: Mean Recovery by Method -", scenario_label),
-      subtitle = "Year means with retention-driven attrition"
+      subtitle = paste("Year means with retention-driven attrition.", dropout_note)
     ) +
     theme_minimal()
 
@@ -1227,30 +1233,23 @@ run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, at
     file = here::here("results", "objects", paste0("test_3_improved_outputs_", scenario_lower, ".rds"))
   )
 
-  cat("\n\n=== CHECKING DEMOGRAPHIC PREDICTION IN IMPUTED DATA ===\n")
-  imp1 <- mice::complete(mids_data, 1)
-  imp_model <- lm(trust_science ~ education + age_baseline + gender + ethnicity, data = imp1)
-  cat("R-squared of demographics predicting trust in imputed data:", round(summary(imp_model)$r.squared, 3), "\n")
-  cat("Coefficients:\n")
-  print(round(coef(imp_model), 3))
-
   analysis_outputs
 }
 
-scenario_params <- list(
-  mar = list(beta_baseline = -0.2, beta_lag = -0.2, beta_current = 0),
-  mnar = list(beta_baseline = -0.2, beta_lag = -0.2, beta_current = -0.25)
-)
-
 scenario_results <- list()
 
-for (scenario_name in names(scenario_params)) {
+for (scenario_name in c("mar", "mnar")) {
   cat("\n\n=== SCENARIO:", toupper(scenario_name), "===\n")
+  beta_params <- list(
+    beta_baseline = -0.2,
+    beta_lag = -0.2,
+    beta_current = if (scenario_name == "mnar") -0.25 else 0
+  )
   dropout_results <- simulate_dropout(
     long_data,
     scenario_name,
     drop_prob_group,
-    scenario_params[[scenario_name]]
+    beta_params
   )
   print(dropout_results$attrition_summary)
 
