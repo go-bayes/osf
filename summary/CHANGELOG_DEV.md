@@ -9,6 +9,7 @@
 
 ### Changed
 - **Canonical simulation** now anchored to `keep/test_3_improved.R` with IPCW, imputation, and categorical comparisons.
+- **MAR and MNAR scenarios** now simulate attrition using baseline and lagged trust, with calibrated intercepts to preserve group retention targets.
 - **Category cutpoints aligned** to Low ≤3, Medium 4–5, High ≥6 across active scripts.
 - **Simulation outputs and figures** now use `here::here()` for file paths.
 - **Synthetic data storage** now defaults to `.rds` files with updated loaders.
@@ -27,6 +28,16 @@
 - **Category proportion plot** now facets by trust category for clearer method comparison.
 - **Observed-by-group diagnostics** now exclude missing categories so proportions are conditional on observation.
 - **Baseline trust group mix** now set to high-majority (high 0.60, medium 0.30, low 0.10).
+- **Amelia imputation** now uses baseline trust predictors, ordinal handling for trust items, and lag terms to better mirror the real analysis.
+- **Simulated trust outcomes** now use integer 1-7 values to mirror ordinal survey responses.
+- **IPCW dropout model** now uses baseline trust, lagged trust, and demographics rather than trust group only.
+- **MICE wide-format imputation** now includes baseline trust predictors for closer alignment with the MAR mechanism.
+- **Scenario-labelled outputs** now save separate figures and `.rds` outputs for MAR and MNAR runs.
+- **High trust trajectory** now fixed to zero change for a simpler benchmark.
+- **Calibration diagnostics** now report per-wave dropout rates against targets and final retention by group.
+- **Scenario summary** now prints mean trajectories across MAR and MNAR at the end of the run.
+- **MICE model** now uses a long-format imputation with baseline and lagged trust predictors to mirror the Amelia setup.
+- **Trust in scientists** now treated as an auxiliary variable only, and excluded from simulation outputs.
 
 ### Deprecated
 - `_delete_me.R` is now blocked from execution in favour of the canonical script.
