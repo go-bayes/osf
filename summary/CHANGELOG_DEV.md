@@ -1,14 +1,21 @@
 # CHANGELOG_DEV.md
 
+## 2026-01-05 - Repository Tidy and Canonical Script Relocation
+
+### Changed
+- Moved the canonical simulation script to `code/simulate_attrition_methods.R` and removed the obsolete `keep/` directory.
+- Archived legacy pipeline materials under `retired/legacy_pipeline` while preserving helper functions in `code/functions`.
+- Updated repository docs to reflect the new minimal structure and entrypoint.
+
 ## 2026-01-05 - Canonical Simulation Refresh, IPCW Comparison, and Pooled Ordinal Results
 
 ### Added
-- **IPCW integration in `keep/test_3_improved.R`** to compare attrition correction under the current-trust dropout mechanism.
+- **IPCW integration in `code/simulate_attrition_methods.R`** to compare attrition correction under the current-trust dropout mechanism.
 - **Pooled ordinal thresholds** for Amelia and MICE, with threshold summaries saved alongside outputs.
 - **RDS output bundle** (`results/objects/test_3_improved_outputs.rds`) for reproducible downstream use.
 
 ### Changed
-- **Canonical simulation** now anchored to `keep/test_3_improved.R` with IPCW, imputation, and categorical comparisons.
+- **Canonical simulation** now anchored to `code/simulate_attrition_methods.R` with IPCW, imputation, and categorical comparisons.
 - **MAR and MNAR scenarios** now simulate attrition using baseline and lagged trust, with calibrated intercepts to preserve group retention targets.
 - **Category cutpoints aligned** to Low ≤3, Medium 4–5, High ≥6 across active scripts.
 - **Simulation outputs and figures** now use `here::here()` for file paths.
@@ -40,9 +47,10 @@
 - **Trust in scientists** now treated as an auxiliary variable only, and excluded from simulation outputs.
 - **Bias strength** now set to milder retention targets (high 0.70, medium 0.45, low 0.25) with softer attrition coefficients.
 - **Low and medium trust trajectories** now decline over time to increase low-trust prevalence in the oracle data.
+- **Continuous comparison plots** now use per-year mean lines with raw points so plotted trajectories match reported means.
 
 ### Deprecated
-- `_delete_me.R` is now blocked from execution in favour of the canonical script.
+- `_delete_me.R` is now archived in `retired/legacy_pipeline` in favour of the canonical script.
 
 ## 2025-01-07 - IPCW Ordinal Analysis and Visualization Scripts
 
@@ -84,7 +92,7 @@
 ### Repository Reorganization
 - Created `keep/` directory for important scripts
   - Moved `test_2_with_ipcw.R` (primary comparison with IPCW)
-  - Moved `test_3_improved.R` (comprehensive method comparison)
+  - Moved `test_3_improved.R` (now `code/simulate_attrition_methods.R`) for comprehensive method comparison
   - Moved `method_comparison_summary.R` (useful summary)
 - Created `retired/` directory for old test scripts
 - Removed all data files (.csv, .rds, .qs)
@@ -226,7 +234,7 @@ Successfully refactored trust in science analysis from Amelia to MICE PMM with A
 - Imputation showing wrong direction (now tracks oracle data well)
 
 ### Added
-- test_3_improved.R implementing all improvements
+- test_3_improved.R implementing all improvements (now `code/simulate_attrition_methods.R`)
 - Comprehensive documentation updates:
   - workflow_summary.md with new simulation details
   - osf_package_summary.md with imputation improvements
