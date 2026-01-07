@@ -152,8 +152,8 @@ long_data$wave <- factor(baseline_year + long_data$years,
 # generate trust trajectories using linear slopes
 cat("Generating trust outcomes with linear slopes...\n")
 
-# define slopes for each group - high trust stays stable
-slopes <- c(low = -0.3, medium = 0.0, high = 0.0)
+# define slopes for each group - low and medium decline, high stays stable
+slopes <- c(low = -0.1, medium = -0.1, high = 0.0)
 
 long_data <- long_data %>%
   mutate(
@@ -184,7 +184,7 @@ oracle_data <- long_data %>%
 # generate dropout with group retention targets
 cat("\nGenerating dropout with group retention targets...\n")
 
-target_retention <- c(high = 0.60, medium = 0.30, low = 0.10)
+target_retention <- c(high = 0.70, medium = 0.45, low = 0.25)
 drop_prob_group <- 1 - target_retention^(1 / (n_waves - 1))
 
 cat("Per-wave dropout probabilities:\n")
@@ -292,19 +292,19 @@ simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_pa
   }
 
   long_data <- long_data |>
-    mutate(
+    dplyr::mutate(
       drop_year = drop_year[as.character(id)],
       dropped = if_else(!is.na(drop_year) & years >= drop_year, 1, 0)
     )
 
   long_data <- long_data |>
-    mutate(
+    dplyr::mutate(
       trust_science_obs = if_else(dropped == 1, NA_real_, trust_science),
       trust_scientists_obs = if_else(dropped == 1, NA_real_, trust_scientists)
     )
 
   observed_data <- long_data |>
-    mutate(
+    dplyr::mutate(
       trust_science = trust_science_obs,
       trust_scientists = trust_scientists_obs
     ) |>
@@ -320,7 +320,7 @@ simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_pa
       .groups = "drop"
     ) |>
     pivot_wider(names_from = years, values_from = pct_dropped, names_prefix = "Year_") |>
-    mutate(scenario = toupper(scenario_label))
+    dplyr::mutate(scenario = toupper(scenario_label))
 
   df_person <- long_data |>
     dplyr::filter(years == 0) |>
@@ -344,7 +344,7 @@ simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_pa
       target_drop_rate = drop_prob_group[trust_group]
     ) |>
     ungroup() |>
-    mutate(scenario = toupper(scenario_label))
+    dplyr::mutate(scenario = toupper(scenario_label))
 
   retention_summary <- df_person |>
     group_by(trust_group) |>
@@ -1227,8 +1227,8 @@ run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, at
 }
 
 scenario_params <- list(
-  mar = list(beta_baseline = -0.35, beta_lag = -0.4, beta_current = 0),
-  mnar = list(beta_baseline = -0.35, beta_lag = -0.4, beta_current = -0.6)
+  mar = list(beta_baseline = -0.2, beta_lag = -0.2, beta_current = 0),
+  mnar = list(beta_baseline = -0.2, beta_lag = -0.2, beta_current = -0.25)
 )
 
 scenario_results <- list()
@@ -1266,6 +1266,13 @@ scenario_summary <- bind_rows(lapply(scenario_results, function(res) {
     mutate(scenario = res$scenario)
 }))
 print(scenario_summary)
+
+cat("\n\n=== SCENARIO SUMMARY (CATEGORY SHIFTS, PERCENTAGE POINTS) ===\n")
+category_summary <- bind_rows(lapply(scenario_results, function(res) {
+  res$cat_shift_summary_pct |>
+    mutate(scenario = res$scenario)
+}))
+print(category_summary)
 
 cat("\n\nAnalysis complete! Check scenario outputs.\n")
 

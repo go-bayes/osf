@@ -38,6 +38,8 @@
 - **Scenario summary** now prints mean trajectories across MAR and MNAR at the end of the run.
 - **MICE model** now uses a long-format imputation with baseline and lagged trust predictors to mirror the Amelia setup.
 - **Trust in scientists** now treated as an auxiliary variable only, and excluded from simulation outputs.
+- **Bias strength** now set to milder retention targets (high 0.70, medium 0.45, low 0.25) with softer attrition coefficients.
+- **Low and medium trust trajectories** now decline over time to increase low-trust prevalence in the oracle data.
 
 ### Deprecated
 - `_delete_me.R` is now blocked from execution in favour of the canonical script.
