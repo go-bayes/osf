@@ -184,7 +184,7 @@ oracle_data <- long_data %>%
 # generate dropout with group retention targets
 cat("\nGenerating dropout with group retention targets...\n")
 
-target_retention <- c(high = 0.70, medium = 0.45, low = 0.25)
+target_retention <- c(high = 0.80, medium = 0.60, low = 0.40)
 drop_prob_group <- 1 - target_retention^(1 / (n_waves - 1))
 
 cat("Per-wave dropout probabilities:\n")
@@ -314,12 +314,14 @@ simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_pa
   attrition_summary <- long_data |>
     group_by(trust_group, years) |>
     summarise(
-      n_total = n(),
-      n_dropped = sum(dropped == 1),
-      pct_dropped = round(100 * n_dropped / n_total, 1),
+      pct_dropped = round(100 * sum(dropped == 1) / n(), 1),
       .groups = "drop"
     ) |>
-    pivot_wider(names_from = years, values_from = pct_dropped, names_prefix = "Year_") |>
+    pivot_wider(
+      names_from = years,
+      values_from = pct_dropped,
+      names_prefix = "Year_"
+    ) |>
     dplyr::mutate(scenario = toupper(scenario_label))
 
   df_person <- long_data |>
@@ -830,7 +832,9 @@ run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, at
     amelia_means,
     mice_means
   ) |>
-    mutate(scenario = scenario_label)
+    mutate(scenario = scenario_label) |>
+    # exclude MICE from results (misspecified - tracks observed data)
+    filter(method != "MICE")
 
   continuous_change <- continuous_means |>
     group_by(method) |>
@@ -844,7 +848,9 @@ run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, at
       method = factor(method, levels = c("Oracle", "Observed", "IPCW", "Amelia", "MICE")),
       scenario = scenario_label
     ) |>
-    arrange(method)
+    arrange(method) |>
+    # exclude MICE from results (misspecified - tracks observed data)
+    filter(method != "MICE")
 
   cat("\nTrust in Science Results (weighted means):\n")
   for (i in seq_len(nrow(continuous_change))) {
@@ -1074,7 +1080,9 @@ run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, at
         TRUE ~ category
       ),
       scenario = scenario_label
-    )
+    ) |>
+    # exclude MICE from results (misspecified - tracks observed data)
+    filter(method != "MICE")
 
   cat_shift_summary <- cat_prop_long |>
     group_by(method, category) |>
