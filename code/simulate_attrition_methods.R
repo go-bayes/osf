@@ -241,7 +241,8 @@ compute_cat_summary <- function(data) {
     )
 }
 
-simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_params) {
+simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_params,
+                              precomputed_intercepts = NULL) {
   long_data <- long_data |>
     arrange(id, years) |>
     group_by(id) |>
@@ -253,6 +254,9 @@ simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_pa
   ids <- sort(unique(long_data$id))
   drop_year <- rep(NA_integer_, length(ids))
   names(drop_year) <- ids
+
+  # store calibrated intercepts for reuse (keyed by wave and group)
+  calibrated_intercepts <- list()
 
   for (t in seq_len(n_waves - 1)) {
     ids_at_risk <- ids[is.na(drop_year)]
@@ -275,14 +279,21 @@ simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_pa
         next
       }
 
-      eta <- beta_params$beta_baseline * scale_vec(data_g$trust_science_baseline) +
+      # mar component of the linear predictor
+      eta_mar <- beta_params$beta_baseline * scale_vec(data_g$trust_science_baseline) +
         beta_params$beta_lag * scale_vec(data_g$lag_trust_science)
 
-      if (scenario_label == "mnar") {
-        eta <- eta + beta_params$beta_current * scale_vec(data_g$trust_science)
+      if (!is.null(precomputed_intercepts)) {
+        # mnar: reuse mar-calibrated intercept, add current trust term without recalibrating
+        intercept <- precomputed_intercepts[[paste(t, group_name)]]
+        eta <- eta_mar + beta_params$beta_current * scale_vec(data_g$trust_science)
+      } else {
+        # mar: calibrate intercept to hit target retention
+        intercept <- calibrate_intercept(eta_mar, drop_prob_group[group_name])
+        calibrated_intercepts[[paste(t, group_name)]] <- intercept
+        eta <- eta_mar
       }
 
-      intercept <- calibrate_intercept(eta, drop_prob_group[group_name])
       drop_prob <- plogis(intercept + eta)
       dropped_now <- rbinom(nrow(data_g), 1, drop_prob)
 
@@ -366,7 +377,8 @@ simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_pa
     observed_data = observed_data,
     attrition_summary = attrition_summary,
     dropout_rates = dropout_rates,
-    retention_summary = retention_summary
+    retention_summary = retention_summary,
+    calibrated_intercepts = calibrated_intercepts
   )
 }
 
@@ -1246,32 +1258,55 @@ run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, at
 
 scenario_results <- list()
 
-for (scenario_name in c("mar", "mnar")) {
-  cat("\n\n=== SCENARIO:", toupper(scenario_name), "===\n")
-  beta_params <- list(
-    beta_baseline = -0.2,
-    beta_lag = -0.2,
-    beta_current = if (scenario_name == "mnar") -0.25 else 0
-  )
-  dropout_results <- simulate_dropout(
-    long_data,
-    scenario_name,
-    drop_prob_group,
-    beta_params
-  )
-  print(dropout_results$attrition_summary)
+# run mar first to calibrate intercepts
+cat("\n\n=== SCENARIO: MAR ===\n")
+beta_params_mar <- list(
+  beta_baseline = -0.2,
+  beta_lag = -0.2,
+  beta_current = 0
+)
+dropout_mar <- simulate_dropout(
+  long_data,
+  "mar",
+  drop_prob_group,
+  beta_params_mar
+)
+print(dropout_mar$attrition_summary)
 
-  scenario_outputs <- run_scenario_analysis(
-    oracle_data = oracle_data,
-    observed_data = dropout_results$observed_data,
-    scenario_label = toupper(scenario_name),
-    attrition_summary = dropout_results$attrition_summary,
-    dropout_rates = dropout_results$dropout_rates,
-    retention_summary = dropout_results$retention_summary
-  )
+scenario_results[["mar"]] <- run_scenario_analysis(
+  oracle_data = oracle_data,
+  observed_data = dropout_mar$observed_data,
+  scenario_label = "MAR",
+  attrition_summary = dropout_mar$attrition_summary,
+  dropout_rates = dropout_mar$dropout_rates,
+  retention_summary = dropout_mar$retention_summary
+)
 
-  scenario_results[[scenario_name]] <- scenario_outputs
-}
+# run mnar using mar-calibrated intercepts (no recalibration)
+# this lets beta_current produce additional attrition naturally
+cat("\n\n=== SCENARIO: MNAR ===\n")
+beta_params_mnar <- list(
+  beta_baseline = -0.2,
+  beta_lag = -0.2,
+  beta_current = -0.25
+)
+dropout_mnar <- simulate_dropout(
+  long_data,
+  "mnar",
+  drop_prob_group,
+  beta_params_mnar,
+  precomputed_intercepts = dropout_mar$calibrated_intercepts
+)
+print(dropout_mnar$attrition_summary)
+
+scenario_results[["mnar"]] <- run_scenario_analysis(
+  oracle_data = oracle_data,
+  observed_data = dropout_mnar$observed_data,
+  scenario_label = "MNAR",
+  attrition_summary = dropout_mnar$attrition_summary,
+  dropout_rates = dropout_mnar$dropout_rates,
+  retention_summary = dropout_mnar$retention_summary
+)
 
 saveRDS(
   scenario_results,
@@ -1293,6 +1328,19 @@ category_summary <- bind_rows(lapply(scenario_results, function(res) {
 print(category_summary)
 
 cat("\n\nAnalysis complete! Check scenario outputs.\n")
+
+# ========================================================================
+# export for manuscript (qs format to dropbox)
+# ========================================================================
+export_path <- "/Users/joseph/v-project Dropbox/data/24-john-kerr-trust-science-growth-simple"
+if (dir.exists(export_path)) {
+  qs::qsave(scenario_results[["mar"]], file.path(export_path, "simulation_mar_results.qs"))
+  qs::qsave(scenario_results[["mnar"]], file.path(export_path, "simulation_mnar_results.qs"))
+  saveRDS(here::here("results", "figures"), file.path(export_path, "simulation_figures_path.rds"))
+  cat("Exported .qs results to:", export_path, "\n")
+} else {
+  cat("Export path not found:", export_path, "\n")
+}
 
 # suggested plots for reporting (commented out)
 # scenario_results <- readRDS(here::here("results", "objects", "test_3_improved_outputs.rds"))
