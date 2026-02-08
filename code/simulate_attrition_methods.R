@@ -247,7 +247,9 @@ simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_pa
     arrange(id, years) |>
     group_by(id) |>
     mutate(
-      lag_trust_science = lag(trust_science, default = dplyr::first(trust_science_baseline))
+      lag_trust_science = lag(trust_science, default = dplyr::first(trust_science_baseline)),
+      # change in trust: orthogonal to mar predictors by construction
+      delta_trust = trust_science - lag(trust_science, default = dplyr::first(trust_science_baseline))
     ) |>
     ungroup()
 
@@ -284,9 +286,11 @@ simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_pa
         beta_params$beta_lag * scale_vec(data_g$lag_trust_science)
 
       if (!is.null(precomputed_intercepts)) {
-        # mnar: reuse mar-calibrated intercept, add current trust term without recalibrating
+        # mnar: reuse mar-calibrated intercept, add change-in-trust term
+        # delta_trust is orthogonal to mar predictors (baseline, lagged level)
+        # so this component is genuinely unobservable at dropout time
         intercept <- precomputed_intercepts[[paste(t, group_name)]]
-        eta <- eta_mar + beta_params$beta_current * scale_vec(data_g$trust_science)
+        eta <- eta_mar + beta_params$beta_change * scale_vec(data_g$delta_trust)
       } else {
         # mar: calibrate intercept to hit target retention
         intercept <- calibrate_intercept(eta_mar, drop_prob_group[group_name])
@@ -319,7 +323,7 @@ simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_pa
       trust_science = trust_science_obs,
       trust_scientists = trust_scientists_obs
     ) |>
-    dplyr::select(-trust_science_obs, -trust_scientists_obs, -lag_trust_science) |>
+    dplyr::select(-trust_science_obs, -trust_scientists_obs, -lag_trust_science, -delta_trust) |>
     arrange(id, years)
 
   attrition_summary <- long_data |>
@@ -385,9 +389,26 @@ simulate_dropout <- function(long_data, scenario_label, drop_prob_group, beta_pa
 run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, attrition_summary, dropout_rates, retention_summary) {
   scenario_lower <- tolower(scenario_label)
   dropout_note <- if (scenario_lower == "mnar") {
-    "Dropout depends on baseline, lagged, and current trust."
+    "Dropout depends on baseline, lagged trust, and within-person change."
   } else {
     "Dropout depends on baseline and lagged trust."
+  }
+
+  # scenario-specific colour palettes for visual distinction
+  if (scenario_lower == "mar") {
+    col_oracle <- "darkgreen"
+    col_observed <- "red"
+    col_method <- c(
+      "Oracle" = "black", "Complete Case" = "red",
+      "IPCW" = "blue", "Amelia" = "darkgreen", "MICE" = "orange"
+    )
+  } else {
+    col_oracle <- "purple4"
+    col_observed <- "darkorange3"
+    col_method <- c(
+      "Oracle" = "grey30", "Complete Case" = "darkorange3",
+      "IPCW" = "steelblue", "Amelia" = "purple4", "MICE" = "sienna"
+    )
   }
 
   cat("\n\n=== COMPARING ORACLE VS OBSERVED (", scenario_label, ") ===\n")
@@ -526,20 +547,20 @@ run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, at
     geom_line(
       data = oracle_mean_plot,
       aes(y = mean_trust),
-      color = "darkgreen",
+      color = col_oracle,
       linewidth = 1.1
     ) +
     geom_point(
       data = oracle_mean_plot,
       aes(y = mean_trust),
-      color = "darkgreen",
+      color = col_oracle,
       size = 3
     ) +
     scale_x_continuous(breaks = 0:4, labels = 1:5) +
     labs(
       x = "Year of Study",
       y = "Trust in Science (1-7)",
-      title = "Trust in Science - Oracle (Ground Truth)"
+      title = paste("Trust in Science - Oracle (", scenario_label, ")")
     ) +
     theme_bw()
 
@@ -552,20 +573,20 @@ run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, at
     geom_line(
       data = observed_mean_plot,
       aes(y = mean_trust),
-      color = "red",
+      color = col_observed,
       linewidth = 1.1
     ) +
     geom_point(
       data = observed_mean_plot,
       aes(y = mean_trust),
-      color = "red",
+      color = col_observed,
       size = 3
     ) +
     scale_x_continuous(breaks = 0:4, labels = 1:5) +
     labs(
       x = "Year of Study",
       y = "Trust in Science (1-7)",
-      title = "Trust in Science - Observed (Survivors)"
+      title = paste("Trust in Science - Observed (", scenario_label, ")")
     ) +
     theme_bw()
 
@@ -881,7 +902,7 @@ run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, at
     geom_line(size = 1.1) +
     geom_point(size = 2) +
     scale_x_continuous(breaks = 0:4, labels = 1:5) +
-    # scale_y_continuous(limits = c(1, 7)) +
+    scale_color_manual(values = col_method) +
     labs(
       x = "Year of Study",
       y = "Mean Trust in Science (1-7)",
@@ -1182,13 +1203,7 @@ run_scenario_analysis <- function(oracle_data, observed_data, scenario_label, at
   ) +
     geom_line(size = 1.2) +
     geom_point(size = 2) +
-    scale_color_manual(values = c(
-      "Oracle" = "black",
-      "Complete Case" = "red",
-      "IPCW" = "blue",
-      "Amelia" = "darkgreen",
-      "MICE" = "orange"
-    )) +
+    scale_color_manual(values = col_method) +
     labs(
       x = "Year",
       y = "Proportion",
@@ -1283,12 +1298,13 @@ scenario_results[["mar"]] <- run_scenario_analysis(
 )
 
 # run mnar using mar-calibrated intercepts (no recalibration)
-# this lets beta_current produce additional attrition naturally
+# dropout depends on change in trust (current - lagged), which is
+# orthogonal to the mar predictors and genuinely unobservable
 cat("\n\n=== SCENARIO: MNAR ===\n")
 beta_params_mnar <- list(
   beta_baseline = -0.2,
   beta_lag = -0.2,
-  beta_current = -0.25
+  beta_change = -0.8
 )
 dropout_mnar <- simulate_dropout(
   long_data,
@@ -1334,10 +1350,19 @@ cat("\n\nAnalysis complete! Check scenario outputs.\n")
 # ========================================================================
 export_path <- "/Users/joseph/v-project Dropbox/data/24-john-kerr-trust-science-growth-simple"
 if (dir.exists(export_path)) {
-  qs::qsave(scenario_results[["mar"]], file.path(export_path, "simulation_mar_results.qs"))
-  qs::qsave(scenario_results[["mnar"]], file.path(export_path, "simulation_mnar_results.qs"))
+  # save individual components as arrow parquet for manuscript
+  for (scenario in c("mar", "mnar")) {
+    res <- scenario_results[[scenario]]
+    margot::here_save_arrow(res$continuous_change, paste0("simulation_", scenario, "_continuous_change"), export_path)
+    margot::here_save_arrow(res$cat_shift_summary_pct, paste0("simulation_", scenario, "_cat_shift"), export_path)
+    margot::here_save_arrow(res$continuous_means, paste0("simulation_", scenario, "_continuous_means"), export_path)
+    margot::here_save_arrow(res$cat_prop_long, paste0("simulation_", scenario, "_cat_prop_long"), export_path)
+    margot::here_save_arrow(res$retention_summary, paste0("simulation_", scenario, "_retention_summary"), export_path)
+    margot::here_save_arrow(res$attrition_summary, paste0("simulation_", scenario, "_attrition_summary"), export_path)
+  }
+  # save figures path
   saveRDS(here::here("results", "figures"), file.path(export_path, "simulation_figures_path.rds"))
-  cat("Exported .qs results to:", export_path, "\n")
+  cat("Exported arrow results to:", export_path, "\n")
 } else {
   cat("Export path not found:", export_path, "\n")
 }
