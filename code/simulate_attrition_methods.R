@@ -160,11 +160,11 @@ long_data <- long_data %>%
     # trust in science with linear trend
     trust_science = trust_science_baseline +
       slopes[trust_group] * years +
-      if_else(years == 0, 0, rnorm(n(), 0, 0.15)),
+      if_else(years == 0, 0, rnorm(n(), 0, 0.50)),
     # trust in scientists with similar linear trend
     trust_scientists = trust_scientists_baseline +
       slopes[trust_group] * years +
-      if_else(years == 0, 0, rnorm(n(), 0, 0.15))
+      if_else(years == 0, 0, rnorm(n(), 0, 0.50))
   ) |>
   # bound to 1-7 scale
   mutate(across(
